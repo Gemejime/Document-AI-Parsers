@@ -23,7 +23,7 @@ Before executing any plan, implementing features, or proposing modifications, yo
 ## 2. Mandatory Core Invariants
 
 ### A. Continuous Doc API Maintenance & API Accessibility
-- **API Accessibility**: The documented API in [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) must be accessible via HTTP endpoints hosted on the worker's internal server (`GET /docs` for Markdown/HTML and `GET /api/docs` for JSON).
+- **API Accessibility (OpenAPI 3.1)**: The documented API in [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) must be accessible via HTTP endpoints hosted on the worker's internal server (`GET /docs` and `GET /redoc` for interactive Swagger/ReDoc UI, and `GET /api/docs` or `GET /openapi.json` for OpenAPI 3.1 JSON).
 - **Zero-Drift Synchronization**: The Doc API ([`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md)) **MUST be updated on every code change or addition**, no matter how small the created or modified code is.
 
 ### B. Secured Logging

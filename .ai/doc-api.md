@@ -1,25 +1,66 @@
 # Microservice Documented API ("Doc API")
 
-> **MANDATORY INVARIANT**: This document specifies both the internal system contracts and the **HTTP Doc API Endpoint** exposed by the microservice.
-> **API ACCESSIBILITY REQUIREMENT**: This documentation specification MUST be accessible directly via an HTTP endpoint on the worker's internal HTTP server:
-> - `GET /docs` — Returns the rendered documentation in Markdown / HTML.
-> - `GET /api/docs` — Returns the structured documentation schema in JSON format.
+> **MANDATORY INVARIANT**: This document specifies both the internal system contracts and the **HTTP Doc API & OpenAPI Endpoint** exposed by the microservice.
+> **API ACCESSIBILITY REQUIREMENT**: This documentation specification MUST be accessible directly via HTTP endpoints hosted on the worker's internal server (port `8080`):
+> - `GET /docs` — Interactive OpenAPI 3.1 Documentation via **Swagger UI**.
+> - `GET /redoc` — Interactive OpenAPI 3.1 Documentation via **ReDoc**.
+> - `GET /openapi.json` & `GET /api/docs` — Machine-readable **OpenAPI 3.1 JSON Specification**.
 > This file and the corresponding API endpoint handler MUST be updated on **every code change or addition**, regardless of how small the modification is.
 
 ---
 
-## 1. Documentation API Endpoint (`GET /docs` & `GET /api/docs`)
+## 1. Documentation & Probe API Endpoints (OpenAPI 3.1)
 
-Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an internal lightweight HTTP server (default port `8080`) that exposes:
-- **`GET /docs`**:
-  - **Content-Type**: `text/markdown; charset=utf-8` or `text/html`
-  - **Description**: Returns the complete, real-time documentation of the worker, including active Temporal queues, gRPC schemas, S3 storage keys, and model versions.
-- **`GET /api/docs`**:
-  - **Content-Type**: `application/json`
-  - **Description**: Returns a structured JSON dictionary of all available endpoints, Temporal task queues, S3 bucket conventions, and Protobuf schema definitions.
-- **`GET /healthz`**: Liveness probe (HTTP 200 OK).
-- **`GET /ready`**: Readiness probe (HTTP 200 OK when models and queues are initialized).
-- **`GET /metrics`**: Prometheus metrics endpoint.
+Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an internal FastAPI ASGI server (default port `8080`) that serves:
+
+| Endpoint | Method | Response Format | Description |
+| :--- | :--- | :--- | :--- |
+| `/docs` | `GET` | `text/html` | Interactive Swagger UI powered by OpenAPI 3.1 |
+| `/redoc` | `GET` | `text/html` | Interactive ReDoc UI documentation |
+| `/api/docs` | `GET` | `application/json` | Alias redirect or raw OpenAPI 3.1 JSON schema |
+| `/openapi.json` | `GET` | `application/json` | Standard machine-readable OpenAPI 3.1 JSON specification |
+| `/healthz` | `GET` | `application/json` | Liveness probe returning `{"status": "healthy"}` |
+| `/ready` | `GET` | `application/json` | Readiness probe verifying GPU caches & Temporal queue connectivity |
+| `/metrics` | `GET` | `text/plain` | Prometheus metrics scrape endpoint |
+
+### OpenAPI Root Info Schema
+```json
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "RAG Document AI Worker API",
+    "description": "Internal HTTP Documentation, Health, and Operational API for rag-document-ai-worker",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Liveness Probe",
+        "responses": {
+          "200": { "description": "Worker event loop is healthy" }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness Probe",
+        "responses": {
+          "200": { "description": "Worker connected to Temporal and model caches initialized" },
+          "503": { "description": "Worker initializing or connection severed" }
+        }
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "summary": "OpenAPI Documentation Schema",
+        "responses": {
+          "200": { "description": "OpenAPI 3.1 JSON specification" }
+        }
+      }
+    }
+  }
+}
+```
 
 ---
 
@@ -39,9 +80,9 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
       document_id: str
       doc_hash: str
       s3_bucket: str
-      s3_key: str              # e.g., "slices/{tenant_id}/{doc_hash}/doc_part_02.pdf"
-      start_page: int          # 0-indexed start page
-      page_count: int          # Number of pages in this slice
+      s3_key: str  # e.g., "slices/{tenant_id}/{doc_hash}/doc_part_02.pdf"
+      start_page: int  # 0-indexed start page
+      page_count: int  # Number of pages in this slice
   ```
 - **Checkpoint Details (Heartbeat)**:
   ```python
@@ -54,7 +95,7 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 - **Output Result**:
   ```python
   class ParseDocumentSliceOutput(BaseModel):
-      status: str              # "SUCCESS" | "QUARANTINED"
+      status: str  # "SUCCESS" | "QUARANTINED"
       pages_processed: int
       table_count: int
       parquet_s3_uris: list[str]  # S3 URIs of extracted tables
@@ -78,7 +119,7 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
       audio_id: str
       audio_hash: str
       s3_bucket: str
-      s3_key: str              # e.g., "audio/{tenant_id}/{audio_hash}/audio_part_01.wav"
+      s3_key: str  # e.g., "audio/{tenant_id}/{audio_hash}/audio_part_01.wav"
       start_offset_seconds: float
       window_duration_seconds: float
   ```
@@ -92,7 +133,7 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 - **Output Result**:
   ```python
   class TranscribeAudioWindowOutput(BaseModel):
-      status: str              # "SUCCESS" | "QUARANTINED"
+      status: str  # "SUCCESS" | "QUARANTINED"
       audio_seconds_processed: float
       segment_count: int
       speaker_count: int
@@ -148,10 +189,10 @@ message DocumentASTChunk {
 
 message ASTNode {
   string node_id = 1;
-  string node_type = 2;         # "paragraph", "heading", "table", "list", etc.
+  string node_type = 2;         // "paragraph", "heading", "table", "list", etc.
   string text_content = 3;
   rag.common.v1.BoundingBox bounding_box = 4;
-  string table_parquet_s3_uri = 5; # Populated only if node_type == "table"
+  string table_parquet_s3_uri = 5; // Populated only if node_type == "table"
 }
 
 message AudioTranscriptChunk {
@@ -189,10 +230,10 @@ syntax = "proto3";
 package rag.common.v1;
 
 message BoundingBox {
-  float x1 = 1;  # Normalized [0.0, 1.0]
-  float y1 = 2;  # Normalized [0.0, 1.0]
-  float x2 = 3;  # Normalized [0.0, 1.0]
-  float y2 = 4;  # Normalized [0.0, 1.0]
+  float x1 = 1;  // Normalized [0.0, 1.0]
+  float y1 = 2;  // Normalized [0.0, 1.0]
+  float x2 = 3;  // Normalized [0.0, 1.0]
+  float y2 = 4;  // Normalized [0.0, 1.0]
   int32 page_number = 5;
 }
 ```

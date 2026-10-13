@@ -11,6 +11,7 @@
 | **Vision & OCR** | Docling Layout Engine + PaddleOCR Fallback | High-fidelity structural parsing & multi-pass OCR |
 | **Table Extraction** | Table-Transformer + PyArrow / Polars | Table detection & serialization to columnar Parquet |
 | **Audio Processing** | Whisper Large-v3 / Faster-Whisper + PyAnnote | Speech-to-text transcription & speaker diarization |
+| **API & Probes** | FastAPI + Uvicorn (ASGI) | OpenAPI 3.1 endpoints (`/docs`, `/api/docs`), `/healthz`, `/ready` |
 | **Data Egress & IPC** | gRPC over HTTP/2 (Protobuf v3) | Low-latency streaming of structured ASTs |
 | **Storage Ingress/Egress**| AWS S3 via `aiobotocore` | S3 slice reads and content-addressed Parquet writes |
 | **Autoscaling** | KEDA (Kubernetes Event-driven Autoscaling) | Queue-depth autoscaling based on Temporal activity lag |

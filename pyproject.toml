@@ -19,6 +19,8 @@ dependencies = [
     "pyarrow>=15.0.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.2.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
     "prometheus-client>=0.20.0",
     "structlog>=24.1.0",
 ]
