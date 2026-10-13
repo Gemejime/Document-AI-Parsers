@@ -6,7 +6,7 @@
 | :--- | :--- | :--- |
 | **Language Runtime** | Python 3.11+ / PyTorch 2.3+ | Compute runtime with GIL isolation via thread pools |
 | **GPU Acceleration** | CUDA 12.2+ / Tensor Core (L4 / A10G 24GB) | Dedicated worker pod GPU allocations, strictly isolated |
-| **Memory Allocator** | `jemalloc` (`LD_PRELOAD=/usr/lib/libjemalloc.so`) | Eliminates CUDA memory fragmentation & stabilizes heap |
+| **Memory Allocator** | `jemalloc` (`LD_PRELOAD=/usr/lib/libjemalloc.so`) | Eliminates host/CPU heap fragmentation & stabilizes glibc memory |
 | **Orchestration** | Temporal Python SDK (`temporalio`) | Activity workers with heartbeat checkpointing & retries |
 | **Vision & OCR** | Docling Layout Engine + PaddleOCR Fallback | High-fidelity structural parsing & multi-pass OCR |
 | **Table Extraction** | Table-Transformer + PyArrow / Polars | Table detection & serialization to columnar Parquet |

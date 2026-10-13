@@ -54,8 +54,8 @@
 ## Testing & Quality Assurance
 
 - Tests must be maintained across:
-  - `test/unit/` (or `Tests/UnitTest/<test-name>`): Math normalization ($[0.0, 1.0]$ bounds), schema validation, AST serialization.
-  - `test/integration/` (or `Tests/IntegrationTest/<test-name>`): Temporal heartbeat mock runs, checkpoint recovery simulations, and mock S3 Parquet writes.
+  - `test/unit/`: Math normalization ($[0.0, 1.0]$ bounds), schema validation, AST serialization.
+  - `test/integration/`: Temporal heartbeat mock runs, checkpoint recovery simulations, and mock S3 Parquet writes.
 - Maintain $\ge 80\%$ test coverage on business logic in `internal/`.
 
 ---

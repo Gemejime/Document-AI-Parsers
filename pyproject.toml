@@ -123,7 +123,5 @@ addopts = "-ra -q --strict-markers"
 testpaths = [
     "test/unit",
     "test/integration",
-    "Tests/UnitTest",
-    "Tests/IntegrationTest",
 ]
 asyncio_mode = "auto"

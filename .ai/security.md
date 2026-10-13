@@ -3,7 +3,7 @@
 ## Threat Model & Trust Boundaries
 
 - **Upstream Ingestion Slices**: Untrusted input boundary. PDFs, scans, and audio windows fetched from S3 may contain corrupt headers, malformed streams, or malicious exploit vectors (e.g. PDF parser exploits, decompression bombs).
-- **Compute Worker Runtime**: Isolated compute environment. Workers operate with non-root Linux permissions inside container images with restricted capabilities (`securityContext: readOnlyRootFilesystem: false`, non-root UID 1000).
+- **Compute Worker Runtime**: Isolated compute environment. Workers operate with non-root Linux permissions (`runAsNonRoot: true`, non-root UID 1000) inside container images with dropped Linux capabilities (`capabilities: drop: ["ALL"]`). Filesystem write controls enforce a read-only root filesystem (`readOnlyRootFilesystem: true`) with explicitly restricted writable ephemeral mounts scoped to temporary scratch storage (`/tmp`) and local pod shared memory (`/dev/shm` emptyDir).
 - **Internal RPC & Egress**: gRPC transport to `rag-chunk-lifecycle-service` must run with mTLS or VPC-internal network isolation.
 - **Object Storage Access**: Read and write access to S3 is strictly scoped to specific tenant prefixes (`s3://<bucket>/artifacts/<tenant_id>/...`) using short-lived IAM credentials (AWS IRSA).
 
