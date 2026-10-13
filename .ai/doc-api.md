@@ -71,8 +71,8 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 #### Activity: `ParseDocumentSliceActivity`
 - **Module**: `internal.temporal.activities.vision_activity`
 - **Queue**: `doc-ai-vision-queue`
-- **Heartbeat Timeout**: `15s` (Emits heartbeat every `10s`)
-- **Execution Mode**: Runs model inference in dedicated worker thread via `asyncio.to_thread()`.
+- **Heartbeat Timeout**: `30s` (Emits heartbeat every `10s`, allowing a 3x buffer against GC/memory jitter)
+- **Execution Mode**: Runs model inference in dedicated worker thread via `asyncio.to_thread()`. The vision engine streams progress page-by-page across the thread boundary to keep heartbeat checkpoints fresh.
 - **Input Payload**:
   ```python
   class ParseDocumentSliceInput(BaseModel):
@@ -95,13 +95,16 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 - **Output Result**:
   ```python
   class ParseDocumentSliceOutput(BaseModel):
-      status: str  # "SUCCESS" | "QUARANTINED"
       pages_processed: int
       table_count: int
       parquet_s3_uris: list[str]  # S3 URIs of extracted tables
       ast_streamed: bool
       duration_seconds: float
   ```
+- **Error Semantics & Quarantine**:
+  - Truncated, encrypted, or unparseable PDF slices fail immediately by throwing a non-retryable Temporal exception:
+    `temporalio.exceptions.ApplicationError("Corrupted PDF slice", type="CORRUPT_INPUT_QUARANTINE", non_retryable=True)`
+  - The workflow coordinator catches `CORRUPT_INPUT_QUARANTINE` and routes the document to quarantine without wasteful retry storms.
 
 ---
 
@@ -110,8 +113,8 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 #### Activity: `TranscribeAudioWindowActivity`
 - **Module**: `internal.temporal.activities.audio_activity`
 - **Queue**: `doc-ai-audio-queue`
-- **Heartbeat Timeout**: `15s` (Emits heartbeat every `10s`)
-- **Execution Mode**: Runs inference in worker thread via `asyncio.to_thread()`.
+- **Heartbeat Timeout**: `30s` (Emits heartbeat every `10s`)
+- **Execution Mode**: Runs inference in worker thread via `asyncio.to_thread()`, streaming segment progress across the thread boundary.
 - **Input Payload**:
   ```python
   class TranscribeAudioWindowInput(BaseModel):
@@ -133,13 +136,15 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 - **Output Result**:
   ```python
   class TranscribeAudioWindowOutput(BaseModel):
-      status: str  # "SUCCESS" | "QUARANTINED"
       audio_seconds_processed: float
       segment_count: int
       speaker_count: int
       ast_streamed: bool
       duration_seconds: float
   ```
+- **Error Semantics & Quarantine**:
+  - Corrupt audio payloads or unsupported codecs fail immediately by throwing:
+    `temporalio.exceptions.ApplicationError("Corrupted audio window", type="CORRUPT_INPUT_QUARANTINE", non_retryable=True)`
 
 ---
 
@@ -190,7 +195,7 @@ message DocumentASTChunk {
 message ASTNode {
   string node_id = 1;
   string node_type = 2;         // "paragraph", "heading", "table", "list", etc.
-  string text_content = 3;
+  string text_content = 3;      // Text content or Markdown summary when node_type == "table"
   rag.common.v1.BoundingBox bounding_box = 4;
   string table_parquet_s3_uri = 5; // Populated only if node_type == "table"
 }
@@ -203,8 +208,8 @@ message AudioTranscriptChunk {
 
 message TranscriptSegment {
   string speaker_id = 1;
-  double start_time_seconds = 2;
-  double end_time_seconds = 3;
+  double start_time_seconds = 2; // Absolute timeline timestamp (start_offset_seconds + window_offset)
+  double end_time_seconds = 3;   // Absolute timeline timestamp
   string text = 4;
   repeated WordTimestamp words = 5;
 }
@@ -229,11 +234,12 @@ syntax = "proto3";
 
 package rag.common.v1;
 
+// Normalized coordinates strictly bound to [0.0, 1.0] anchored at top-left origin (0.0, 0.0)
 message BoundingBox {
-  float x1 = 1;  // Normalized [0.0, 1.0]
-  float y1 = 2;  // Normalized [0.0, 1.0]
-  float x2 = 3;  // Normalized [0.0, 1.0]
-  float y2 = 4;  // Normalized [0.0, 1.0]
+  float x1 = 1;  // Normalized top-left x [0.0, 1.0]
+  float y1 = 2;  // Normalized top-left y [0.0, 1.0]
+  float x2 = 3;  // Normalized bottom-right x [0.0, 1.0]
+  float y2 = 4;  // Normalized bottom-right y [0.0, 1.0]
   int32 page_number = 5;
 }
 ```
