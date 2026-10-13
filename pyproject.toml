@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-document-ai-worker"
+version = "0.1.0"
+description = "Horizontally scalable, stateless multimodal document and audio AI parser worker"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Document AI Team" }
+]
+dependencies = [
+    "temporalio>=1.6.0",
+    "grpcio>=1.62.0",
+    "protobuf>=4.25.0",
+    "aiobotocore>=2.12.0",
+    "pyarrow>=15.0.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    "prometheus-client>=0.20.0",
+    "structlog>=24.1.0",
+]
+
+[project.optional-dependencies]
+vision = [
+    "torch>=2.3.0",
+    "docling>=1.0.0",
+    "paddleocr>=2.7.0",
+    "transformers>=4.40.0",
+]
+audio = [
+    "torch>=2.3.0",
+    "faster-whisper>=1.0.0",
+    "pyannote.audio>=3.1.0",
+    "soundfile>=0.12.1",
+]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "types-protobuf>=4.25.0",
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "tasks",
+    "*_pb2.py",
+    "*_pb2_grpc.py",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "ARG",  # flake8-unused-arguments
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # Ruff-specific rules
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["internal", "cmd", "api"]
+combine-as-imports = true
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "docling.*",
+    "paddleocr.*",
+    "faster_whisper.*",
+    "pyannote.*",
+    "aiobotocore.*",
+    "botocore.*",
+    "temporalio.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = [
+    "test/unit",
+    "test/integration",
+    "Tests/UnitTest",
+    "Tests/IntegrationTest",
+]
+asyncio_mode = "auto"
