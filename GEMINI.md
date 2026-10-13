@@ -16,7 +16,6 @@ Before executing any plan, implementing features, or proposing modifications, yo
 6. [`.ai/security.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/security.md) — Threat model, memory boundaries, and secured logging invariants.
 7. [`.ai/ai-workflow-rules.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/ai-workflow-rules.md) — Spec-driven implementation rules and pre-commit checks.
 8. [`.ai/progress-tracker.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/progress-tracker.md) — Real-time progress, completed items, and next milestones.
-9. [`.ai/ui-context.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/ui-context.md) — Headless backend operational presentation & Prometheus telemetry specs.
 
 ---
 

@@ -28,12 +28,14 @@ dependencies = [
 [project.optional-dependencies]
 vision = [
     "torch>=2.3.0",
+    "torchvision>=0.18.0",
     "docling>=1.0.0",
     "paddleocr>=2.7.0",
     "transformers>=4.40.0",
 ]
 audio = [
     "torch>=2.3.0",
+    "torchaudio>=2.3.0",
     "faster-whisper>=1.0.0",
     "pyannote.audio>=3.1.0",
     "soundfile>=0.12.1",

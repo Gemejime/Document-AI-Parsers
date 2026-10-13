@@ -64,6 +64,7 @@
   - `doc_ai_task_duration_seconds`: Histogram measuring execution duration per segment.
   - `doc_ai_vram_allocated_bytes`: Gauge tracking active GPU memory allocations.
   - `doc_ai_heartbeat_emissions_total`: Counter tracking successful Temporal heartbeats.
+  - `doc_ai_heartbeat_delay_seconds`: Histogram/Gauge tracking delay between heartbeat intervals.
   - `doc_ai_cuda_oom_errors_total`: Counter tracking CUDA out-of-memory errors.
 
 ---
@@ -81,18 +82,19 @@ rag-document-ai-worker/
 │       └── common.proto           # Normalized coordinates and provenance definitions
 ├── internal/
 │   ├── config/settings.py         # Queue names, VRAM thresholds, S3 buckets
+│   ├── server/probe_server.py     # FastAPI ASGI app (/docs, /healthz, /ready, /metrics)
 │   ├── vision/
-│   │   ├── layout/docling_engine.py  # Standardized Docling parsing adapter
+│   │   ├── layout/docling_engine.py  # Standardized Docling parsing adapter (page streaming)
 │   │   ├── ocr/fallback_ocr.py       # Multi-pass OCR for low-confidence regions
 │   │   ├── table/table_extractor.py  # Table detection and bounding extraction
 │   │   ├── table/parquet_s3_writer.py# Direct Parquet serialization to S3
-│   │   └── coordinates.py            # Coordinate normalization to [0.0, 1.0]
+│   │   └── coordinates.py            # Coordinate normalization to [0.0, 1.0] (top-left origin)
 │   ├── audio/
-│   │   ├── asr/whisper_engine.py     # Whisper transcription runner
+│   │   ├── asr/whisper_engine.py     # Whisper transcription runner (chunk streaming)
 │   │   └── diarization/pyannote_engine.py # Speaker clustering and boundary alignment
 │   ├── temporal/
-│   │   ├── activities/vision_activity.py  # Thread-isolated PDF parsing activity
-│   │   ├── activities/audio_activity.py   # Thread-isolated audio activity
+│   │   ├── activities/vision_activity.py  # Thread-isolated PDF parsing activity with page heartbeats
+│   │   ├── activities/audio_activity.py   # Thread-isolated audio activity with offset heartbeats
 │   │   └── common/heartbeat_runner.py     # Background heartbeat emission utility
 │   ├── storage/s3_client.py       # S3 slice reader and Parquet writer
 │   └── transport/grpc/chunk_client.py # Streaming client to rag-chunk-lifecycle-service
@@ -112,8 +114,10 @@ rag-document-ai-worker/
 
 ## Architectural Invariants (Non-Negotiable)
 
-1. **GIL Isolation**: Long-running PyTorch and Docling model inference MUST run inside `asyncio.to_thread()` or dedicated executor pools. The main event loop must never be blocked.
-2. **Heartbeat Continuity**: Temporal heartbeats MUST emit at least once every 10 seconds. Checkpoint details (`activity.get_heartbeat_details()`) must contain the last processed page index or audio timestamp.
-3. **Normalized Coordinates**: All bounding box coordinates MUST be normalized float values between $0.0$ and $1.0$.
-4. **Direct S3 Parquet Egress**: Tabular extractions must write directly to S3 as Parquet datasets under deterministic content-addressed keys. Raw table row dictionaries must never be transported via gRPC.
-5. **No Shared Host Memory**: Containers must not mount host `/dev/shm` across pods.
+1. **GIL Isolation & Progressive Progress Streaming**: Long-running PyTorch, Docling, and Whisper inference MUST run inside `asyncio.to_thread()` or dedicated executor pools without blocking the main event loop. Crucially, inference engines must yield progressive per-page or per-offset progress updates across the thread boundary (via generators or thread-safe progress states) so the background heartbeat runner continually updates checkpoint details (`activity.get_heartbeat_details()`) allowing seamless mid-slice resumption (e.g., resuming at page 51 after SIGKILL at page 52).
+2. **Heartbeat Continuity & Tolerances**: Temporal heartbeats MUST emit at least once every 10 seconds with a configured `heartbeat_timeout` of 30 seconds to absorb GC/defragmentation jitter. Checkpoint details must contain the last processed page index or audio timestamp.
+3. **Normalized Top-Left Coordinates**: All bounding box coordinates MUST be normalized float values between $0.0$ and $1.0$ anchored to the **top-left origin** $(0.0, 0.0)$, where $(x_1, y_1)$ is the top-left coordinate and $(x_2, y_2)$ is the bottom-right coordinate.
+4. **Absolute Timeline Timestamps**: Audio segments emitted over gRPC MUST contain absolute media timeline offsets (calculated as `start_offset_seconds + local_offset`) so downstream consumers can assemble transcripts without manual offset reconstruction.
+5. **Direct S3 Parquet Egress**: Tabular extractions must write directly to S3 as Parquet datasets under deterministic content-addressed keys (`s3://<bucket>/artifacts/<tenant_id>/<doc_hash>/tables/<table_hash>.parquet`). Raw table row dictionaries must never be transported via gRPC; the AST table node carries only the Markdown summary and S3 Parquet URI.
+6. **No Shared Host Memory**: Containers must not mount host `/dev/shm` across pods. Use local pod-scoped `emptyDir` memory mounts (2 GiB).
+7. **FastAPI Operational Server**: Each worker process hosts an ASGI FastAPI server (`internal/server/probe_server.py`) exposing OpenAPI 3.1 endpoints (`/docs`, `/redoc`, `/api/docs`, `/openapi.json`), health probes (`/healthz`, `/ready`), and Prometheus telemetry (`/metrics`).
