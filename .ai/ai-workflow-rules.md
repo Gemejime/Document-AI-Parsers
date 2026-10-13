@@ -3,8 +3,8 @@
 ## Development Approach
 
 Build this microservice incrementally following a spec-driven workflow:
-- The specification documents in [`tasks/`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/tasks) and context files in [`.ai/`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai) define system invariants, data structures, and operational boundaries.
-- Adhere strictly to the decoupled worker design (`doc-ai-vision-worker` and `doc-ai-audio-worker`) and the 5 backend architectural layers documented in [`.ai/architecture.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/architecture.md).
+- The specification documents in [`tasks/`](tasks) and context files in [`.ai/`](.ai) define system invariants, data structures, and operational boundaries.
+- Adhere strictly to the decoupled worker design (`doc-ai-vision-worker` and `doc-ai-audio-worker`) and the 5 backend architectural layers documented in [`.ai/architecture.md`](.ai/architecture.md).
 - Implement against these specs without inferring undocumented dependencies or deviating from architectural decision records (ADRs).
 
 ---
@@ -20,7 +20,7 @@ Build this microservice incrementally following a spec-driven workflow:
 
 ## Non-Negotiable Invariants
 
-1. **Continuous Doc API & OpenAPI Maintenance**: The [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) file and OpenAPI 3.1 endpoints (`/docs`, `/redoc`, `/api/docs`, `/openapi.json`) MUST be updated on **every code change or addition**, regardless of how small the modification is.
+1. **Continuous Doc API & OpenAPI Maintenance**: The [`.ai/doc-api.md`](.ai/doc-api.md) file and OpenAPI 3.1 endpoints (`/docs`, `/redoc`, `/api/docs`, `/openapi.json`) MUST be updated on **every code change or addition**, regardless of how small the modification is.
 2. **Secured Logging**: All logs emitted by workers or utilities must be structured JSON logs. Strictly redact customer document text, OCR spans, speech transcripts, PII/PHI, presigned URLs, and authentication tokens before emission.
 3. **GIL Isolation**: Blocking model inference loops (Docling, PyTorch, Whisper, PaddleOCR) MUST be isolated in worker threads (`asyncio.to_thread()`), ensuring Temporal activity heartbeats emit every 10 seconds without latency degradation.
 4. **Normalized Unit Coordinates**: All document bounding box coordinates MUST be normalized to unit float bounds $[0.0, 1.0]$.
@@ -47,5 +47,5 @@ Before committing code, submitting changes, or marking a task complete:
 3. **Type Safety**: Verify static types via `mypy cmd internal test`.
 4. **Automated Tests**: Ensure unit and integration tests are passing in `test/unit/` and `test/integration/`.
 5. **Secured Logging Audit**: Verify no raw PII, document text, or secret tokens are leaked in logging statements.
-6. **Doc API & OpenAPI Sync**: Confirm [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) reflects any new or modified classes, parameters, endpoints, or storage keys.
-7. **Progress Tracker**: Update [`.ai/progress-tracker.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/progress-tracker.md) with session notes and completed items.
+6. **Doc API & OpenAPI Sync**: Confirm [`.ai/doc-api.md`](.ai/doc-api.md) reflects any new or modified classes, parameters, endpoints, or storage keys.
+7. **Progress Tracker**: Update [`.ai/progress-tracker.md`](.ai/progress-tracker.md) with session notes and completed items.

@@ -8,22 +8,22 @@ You are Antigravity / Gemini working on the **`rag-document-ai-worker`** microse
 
 Before executing any plan, implementing features, or proposing modifications, you **MUST** read and adhere to the project specifications defined in the `.ai/` folder, starting with:
 
-1. [`.ai/agents.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/agents.md) — Core AI agent persona, prompt-planning workflow, and execution rules.
-2. [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) — The Documented API for the microservice (accessible via `GET /docs` and `GET /api/docs`).
-3. [`.ai/project-overview.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/project-overview.md) — Product definition, compute pool decoupling, and SLIs/SLOs.
-4. [`.ai/architecture.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/architecture.md) — 5-layer backend architecture, system boundaries, and invariants.
-5. [`.ai/code-standards.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/code-standards.md) — Python 3.11+ rules, Ruff linting/formatting/isort, and typing.
-6. [`.ai/security.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/security.md) — Threat model, memory boundaries, and secured logging invariants.
-7. [`.ai/ai-workflow-rules.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/ai-workflow-rules.md) — Spec-driven implementation rules and pre-commit checks.
-8. [`.ai/progress-tracker.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/progress-tracker.md) — Real-time progress, completed items, and next milestones.
+1. [`.ai/agents.md`](.ai/agents.md) — Core AI agent persona, prompt-planning workflow, and execution rules.
+2. [`.ai/doc-api.md`](.ai/doc-api.md) — The Documented API for the microservice (accessible via `GET /docs` and `GET /api/docs`).
+3. [`.ai/project-overview.md`](.ai/project-overview.md) — Product definition, compute pool decoupling, and SLIs/SLOs.
+4. [`.ai/architecture.md`](.ai/architecture.md) — 5-layer backend architecture, system boundaries, and invariants.
+5. [`.ai/code-standards.md`](.ai/code-standards.md) — Python 3.11+ rules, Ruff linting/formatting/isort, and typing.
+6. [`.ai/security.md`](.ai/security.md) — Threat model, memory boundaries, and secured logging invariants.
+7. [`.ai/ai-workflow-rules.md`](.ai/ai-workflow-rules.md) — Spec-driven implementation rules and pre-commit checks.
+8. [`.ai/progress-tracker.md`](.ai/progress-tracker.md) — Real-time progress, completed items, and next milestones.
 
 ---
 
 ## 2. Mandatory Core Invariants
 
 ### A. Continuous Doc API Maintenance & API Accessibility
-- **API Accessibility (OpenAPI 3.1)**: The documented API in [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) must be accessible via HTTP endpoints hosted on the worker's internal server (`GET /docs` and `GET /redoc` for interactive Swagger/ReDoc UI, and `GET /api/docs` or `GET /openapi.json` for OpenAPI 3.1 JSON).
-- **Zero-Drift Synchronization**: The Doc API ([`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md)) **MUST be updated on every code change or addition**, no matter how small the created or modified code is.
+- **API Accessibility (OpenAPI 3.1)**: The documented API in [`.ai/doc-api.md`](.ai/doc-api.md) must be accessible via HTTP endpoints hosted on the worker's internal server (`GET /docs` and `GET /redoc` for interactive Swagger/ReDoc UI, and `GET /api/docs` or `GET /openapi.json` for OpenAPI 3.1 JSON).
+- **Zero-Drift Synchronization**: The Doc API ([`.ai/doc-api.md`](.ai/doc-api.md)) **MUST be updated on every code change or addition**, no matter how small the created or modified code is.
 
 ### B. Secured Logging
 - **Strict PII & Content Redaction**: Document text content, OCR blocks, speech transcripts, customer PII/PHI, presigned URLs, and authentication tokens must **NEVER** appear in log outputs.
@@ -64,6 +64,6 @@ Before declaring any task or phase complete:
 2. `python -m ruff format .` (clean formatting).
 3. `mypy cmd internal test` (type safety verified).
 4. `pytest test/unit test/integration` (all tests passing).
-5. [`.ai/doc-api.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/doc-api.md) synchronized with any API, schema, or model changes.
-6. [`.ai/progress-tracker.md`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.ai/progress-tracker.md) updated with completed progress and session notes.
+5. [`.ai/doc-api.md`](.ai/doc-api.md) synchronized with any API, schema, or model changes.
+6. [`.ai/progress-tracker.md`](.ai/progress-tracker.md) updated with completed progress and session notes.
 7. Ensure all commit messages strictly use the required conventional commit prefixes and that at least two commits are made per session.

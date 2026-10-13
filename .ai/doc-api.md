@@ -17,7 +17,7 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
 | :--- | :--- | :--- | :--- |
 | `/docs` | `GET` | `text/html` | Interactive Swagger UI powered by OpenAPI 3.1 |
 | `/redoc` | `GET` | `text/html` | Interactive ReDoc UI documentation |
-| `/api/docs` | `GET` | `application/json` | Alias redirect or raw OpenAPI 3.1 JSON schema |
+| `/api/docs` | `GET` | `application/json` | Raw OpenAPI 3.1 JSON specification schema |
 | `/openapi.json` | `GET` | `application/json` | Standard machine-readable OpenAPI 3.1 JSON specification |
 | `/healthz` | `GET` | `application/json` | Liveness probe returning `{"status": "healthy"}` |
 | `/ready` | `GET` | `application/json` | Readiness probe verifying GPU caches & Temporal queue connectivity |

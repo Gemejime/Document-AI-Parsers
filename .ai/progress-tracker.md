@@ -53,3 +53,4 @@
 - Branch `rag-document-ai-worker` active and clean.
 - Python 3.11+ compatibility target with Ruff 0.16.6 installed.
 - Pressure test recommendations executed and specifications hardened against `tasks/` blueprints.
+- Code review feedback addressed: standardized portable relative documentation paths across `.ai.md`, `GEMINI.md`, and `.ai/ai-workflow-rules.md`; clarified host-heap memory role of `jemalloc`; scoped container capabilities and read-only rootfs mounts in `.ai/security.md`; locked `/api/docs` to raw OpenAPI 3.1 schema; standardized pytest testpaths to `test/unit` and `test/integration`.
