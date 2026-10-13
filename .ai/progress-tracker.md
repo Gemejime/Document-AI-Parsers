@@ -24,17 +24,26 @@
   - Created `GEMINI.md` pairing agent instructions with repository context.
   - Conducted rigorous pressure test against all `tasks/` architectural specifications and resolved critical edge cases (thread progress streaming, heartbeat timeout buffer, fail-fast quarantine exceptions, top-left coordinate normalization, absolute audio timeline alignment, and removed missing `ui-context.md` reference).
 
+- **Phase 1: Worker Decoupling & Runtimes (Completed)**:
+  - **Core Settings & Secured Logging** (`internal/config/settings.py`): Pydantic `WorkerSettings` reading environment variables, model cache directories, structured JSON logging via `structlog`, and security filters redacting tokens, keys, presigned URLs, and document/transcript text.
+  - **FastAPI Operational Probe Server** (`internal/server/probe_server.py`): Interactive OpenAPI 3.1 (`/docs`, `/redoc`), schema specs (`/api/docs`, `/openapi.json`), health probes (`/healthz`, `/ready` tied to worker readiness), and Prometheus metrics (`/metrics`).
+  - **Coordinate Normalization Math** (`internal/vision/coordinates.py`): Normalized bounding boxes strictly bounded to $[0.0, 1.0]$ with top-left vs bottom-left origin adapters (handling PostScript/PDF coordinate flipping), clamping, and validation.
+  - **Storage & Transport Protocols** (`internal/storage/s3_client.py`, `internal/transport/grpc/chunk_client.py`): Asynchronous client protocols and stubs for S3 slice reads/Parquet writes and gRPC AST streaming.
+  - **Thread-Isolated Heartbeat Runner & Cooperative Cancellation** (`internal/temporal/common/heartbeat_runner.py`): `HeartbeatRunner` with `ProgressTracker`, non-blocking 10s interval emissions, latency telemetry, and `threading.Event` cooperative abort.
+  - **Temporal Activities Framework** (`internal/temporal/activities/vision_activity.py`, `audio_activity.py`): `ParseDocumentSliceActivity` and `TranscribeAudioWindowActivity` supporting checkpoint resumption (recovering from previous page/offset) and non-retryable fail-fast quarantine (`CORRUPT_INPUT_QUARANTINE`).
+  - **Worker Bootstrap Entry Points** (`cmd/vision_worker/main.py`, `cmd/audio_worker/main.py`): Co-hosting Temporal Worker and Uvicorn probe server concurrently in the main asyncio event loop via `asyncio.gather()`.
+  - **Containerization & Helm Deployments** (`deployments/docker/Dockerfile.vision`, `Dockerfile.audio`, `deployments/helm/values-vision.yaml`, `values-audio.yaml`): Multi-stage CUDA 12.2 images with `libjemalloc2`, model cache env vars, non-root UID 1000, read-only rootfs, 2 GiB `/dev/shm`, and KEDA `ScaledObject` queue depth triggers.
+  - **Comprehensive Verification Suite** (`test/unit/`, `test/integration/`): 24 unit and integration tests passing covering coordinate math, settings redaction, probe endpoints, GIL thread isolation, and Temporal checkpoint resumption.
+
 ## In Progress
 
-- Scaffolding monorepo directory layout (`cmd/`, `internal/`, `api/proto/v1/`).
+- Phase 2: Vision & Tabular Pipeline Preparation.
 
 ## Next Up
 
-1. Scaffold Protobuf contracts in `api/proto/v1/` (`document_ai.proto`, `common.proto`).
-2. Scaffold `internal/config/settings.py` with Pydantic settings.
-3. Implement `internal/server/probe_server.py` with FastAPI OpenAPI 3.1 & Prometheus metrics.
-4. Implement `internal/temporal/common/heartbeat_runner.py` with `asyncio.to_thread()` isolation.
-5. Implement `internal/vision/coordinates.py` for unit coordinate normalization ($[0.0, 1.0]$).
+1. Implement Docling layout parser with OCR fallback in `internal/vision/layout/docling_engine.py`.
+2. Implement Table-Transformer tabular dataset extraction and direct S3 Parquet serializer in `internal/vision/table/`.
+3. Implement unary/streaming gRPC AST client pushing to `rag-chunk-lifecycle-service`.
 
 ## Architecture Decisions
 
