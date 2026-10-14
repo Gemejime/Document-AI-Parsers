@@ -82,6 +82,14 @@ class WorkerSettings(BaseSettings):
         default=20 * 1024 * 1024 * 1024,
         description="GPU VRAM threshold ceiling in bytes (default 20 GiB)",
     )
+    OCR_CONFIDENCE_THRESHOLD: float = Field(
+        default=0.80,
+        description="Confidence threshold triggering secondary OCR pass",
+    )
+    TABLE_PARQUET_COMPRESSION: str = Field(
+        default="snappy",
+        description="Compression codec for PyArrow Parquet tables (snappy, zstd, gzip)",
+    )
     S3_ENDPOINT_URL: str | None = Field(
         default=None,
         description="Optional custom S3 endpoint URL (for LocalStack/MinIO testing)",

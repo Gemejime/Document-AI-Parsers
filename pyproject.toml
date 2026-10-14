@@ -114,7 +114,17 @@ module = [
     "aiobotocore.*",
     "botocore.*",
     "temporalio.*",
+    "pyarrow.*",
+    "grpc.*",
+    "torch.*",
 ]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "api.proto.*",
+]
+ignore_errors = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -123,5 +133,6 @@ addopts = "-ra -q --strict-markers -p no:faker"
 testpaths = [
     "test/unit",
     "test/integration",
+    "test/performance",
 ]
 asyncio_mode = "auto"

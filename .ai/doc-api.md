@@ -243,3 +243,65 @@ message BoundingBox {
   int32 page_number = 5;
 }
 ```
+
+---
+
+## 5. Vision & Tabular Pipeline Models & Engine Adapters
+
+### A. Docling Layout Engine (`internal.vision.layout.docling_engine`)
+- **`ParsedASTNode`**:
+  ```python
+  @dataclass
+  class ParsedASTNode:
+      node_id: str
+      node_type: str  # paragraph, heading_h1..h6, list, table
+      text_content: str  # Plain text or Markdown (headings prefix '# ', tables carry GFM table)
+      bounding_box: NormalizedBoundingBox  # Normalized [0.0, 1.0] top-left origin
+      confidence: float  # [0.0, 1.0]
+      table_parquet_s3_uri: str | None = None  # Populated for table nodes
+      table_data: TableData | None = None
+  ```
+- **`PageLayoutResult`**:
+  ```python
+  @dataclass
+  class PageLayoutResult:
+      page_number: int  # 1-indexed page number
+      nodes: list[ParsedASTNode]
+  ```
+- **Resumption & Cooperative Cancellation**:
+  - `parse_slice_pages(pdf_path, start_from_page=0, total_pages=..., stop_event=..., on_page_complete=...)`:
+    - Skips pages `< start_from_page` for zero-duplicate mid-slice recovery.
+    - Yields page by page across worker thread boundary, updating Temporal heartbeats every 10s.
+    - Checks `stop_event.is_set()` to abort cleanly on activity cancellation.
+
+### B. Fallback OCR Engine (`internal.vision.ocr.fallback_ocr`)
+- **`FallbackOCREngine`**:
+  - Secondary OCR pass integrating PaddleOCR for multilingual/scanned regions.
+  - Triggers when node confidence < `settings.OCR_CONFIDENCE_THRESHOLD` (default `0.80`) or when scanned visual blocks contain empty text streams.
+  - Updates text content and enhances confidence scores while preserving reading order and normalized bounding boxes.
+
+### C. Tabular Dataset Extraction & PyArrow Parquet (`internal.vision.table`)
+- **`TableData` (`internal.vision.table.table_extractor`)**:
+  - `to_markdown() -> str`: Clean GitHub-Flavored Markdown (GFM) with escaped pipes and table captions.
+  - `compute_table_hash() -> str`: Deterministic SHA-256 table hash from canonical JSON representation:
+    ```python
+    canonical_repr = json.dumps({"headers": headers, "rows": rows}, sort_keys=True)
+    table_hash = hashlib.sha256(canonical_repr.encode("utf-8")).hexdigest()
+    ```
+  - `to_pyarrow_table() -> pyarrow.Table`: Columnar PyArrow Table with strongly-typed columns (inferred boolean, int64, float64, string).
+- **`ParquetS3Writer` (`internal.vision.table.parquet_s3_writer`)**:
+  - Serializes `TableData` to Parquet bytes using Snappy compression (`compression="snappy"`).
+  - Persists directly to S3 under content-addressed path:
+    `s3://<bucket>/artifacts/<tenant_id>/<doc_hash>/tables/<table_hash>.parquet`
+  - Injects mandatory S3 object metadata headers:
+    - `x-amz-meta-tenant-id`: `<tenant_id>`
+    - `x-amz-meta-doc-hash`: `<doc_hash>`
+    - `x-amz-meta-table-hash`: `<table_hash>`
+    - `x-amz-meta-page-number`: `<page_number>`
+    - `Content-Type`: `application/vnd.apache.parquet`
+
+### D. Memory & VRAM Protocol (`internal.vision.memory`)
+- `cleanup_vram_and_memory()`:
+  - Invokes `torch.cuda.empty_cache()` and `torch.cuda.ipc_collect()` after each page/slice iteration.
+  - Invokes `gc.collect()` to maintain bounded host heap memory within container cgroup caps.
+
