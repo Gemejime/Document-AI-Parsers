@@ -305,3 +305,77 @@ message BoundingBox {
   - Invokes `torch.cuda.empty_cache()` and `torch.cuda.ipc_collect()` after each page/slice iteration.
   - Invokes `gc.collect()` to maintain bounded host heap memory within container cgroup caps.
 
+---
+
+## 6. Audio Pipeline & Diarization Models & Engine Adapters
+
+### A. Audio Data Models (`internal.audio.models`)
+- **`WordTiming`**:
+  ```python
+  @dataclass
+  class WordTiming:
+      word: str
+      start_time: float  # Absolute media timeline timestamp
+      end_time: float  # Absolute media timeline timestamp
+      confidence: float = 1.0
+  ```
+- **`SpeakerTurn`**:
+  ```python
+  @dataclass
+  class SpeakerTurn:
+      speaker_id: str
+      start_time: float  # Relative to processed slice
+      end_time: float  # Relative to processed slice
+  ```
+- **`RawWhisperSegment`**:
+  ```python
+  @dataclass
+  class RawWhisperSegment:
+      text: str
+      start_time: float  # Relative to processed slice
+      end_time: float  # Relative to processed slice
+      words: list[WordTiming]
+  ```
+- **`AlignedTranscriptSegment`**:
+  ```python
+  @dataclass
+  class AlignedTranscriptSegment:
+      speaker_id: str
+      start_time_seconds: float  # Absolute timeline timestamp
+      end_time_seconds: float  # Absolute timeline timestamp
+      text: str
+      words: list[WordTiming]
+  ```
+
+### B. Faster-Whisper Large-v3 Speech-to-Text Engine (`internal.audio.asr.whisper_engine`)
+- **`WhisperEngine`**:
+  - High-throughput CTranslate2 runner (`settings.WHISPER_MODEL_SIZE`, `settings.WHISPER_DEVICE`, `settings.WHISPER_COMPUTE_TYPE`, `settings.WHISPER_BEAM_SIZE`).
+  - Word-level timestamps (`word_timestamps=True`).
+  - Resumption support: skips audio prior to `start_from_offset` for mid-window recovery.
+  - Progressive audio interval processing (e.g. 15–30s strides) yielding across the thread boundary for active heartbeat reporting.
+  - Cooperative cancellation via `threading.Event` (`stop_event`).
+  - Resilient mock/simulated fallback runner when CUDA/CTranslate2 binaries are absent.
+
+### C. PyAnnote Speaker Diarization Engine (`internal.audio.diarization.pyannote_engine`)
+- **`PyAnnoteEngine`**:
+  - Voiceprint clustering adapter standardizing on PyAnnote 3.1 (`settings.PYANNOTE_MODEL_ID`).
+  - Hugging Face cache support via `settings.HF_HOME` and gated token support via `settings.HF_TOKEN` with secured logging redaction.
+  - Configurable speaker count constraints (`min_speakers`, `max_speakers`).
+  - Cooperative cancellation and progressive interval processing.
+  - Fallback simulated runner when neural checkpoints are not pre-downloaded.
+
+### D. Timeline Alignment & Absolute Timeline Projection (`internal.audio.alignment`)
+- **`align_audio_timeline`**:
+  - Computes temporal overlap between each word and speaker turns:
+    $$\text{overlap}(w, s) = \max(0.0, \min(w.\text{end}, s.\text{end}) - \max(w.\text{start}, s.\text{start}))$$
+  - Assigns word to turn with $\max(\text{overlap})$.
+  - Silence gap fallback: assigns unassigned words to nearest preceding active turn, or `"SPEAKER_00"`.
+  - Groups consecutive words by speaker, splitting on speaker change or silence gap $> 1.5$s.
+  - Enforces the **Absolute Timeline Invariant (ADR-009)**:
+    $$\text{timestamp}_{\text{absolute}} = \text{start\_offset\_seconds} + \text{start\_from\_offset} + t_{\text{slice}}$$
+    Both `TranscriptSegment.start_time_seconds` / `end_time_seconds` AND `WordTimestamp.start_time` / `end_time` are projected onto this absolute timeline.
+
+### E. Audio Memory & VRAM Cleanup (`internal.audio.memory`)
+- `cleanup_vram_and_memory()`:
+  - Flushes `torch.cuda.empty_cache()` and `gc.collect()` after each audio window execution.
+

@@ -2,29 +2,23 @@
 
 ## Current Phase
 
-- **Phase 2: Vision & Tabular Pipeline** (Completed)
+- **Phase 3: Dedicated Audio Pipeline & Speaker Diarization** (Completed)
 
 ## Current Goal
 
-- Phase 3: Audio Pipeline & Speaker Diarization.
+- Microservice Production Deployment & Integration Pressure Testing.
 
 ## Completed
 
-- **Phase 2: Vision & Tabular Pipeline (Completed)**:
-  - **Docling Layout Engine Adapter** (`internal/vision/layout/docling_engine.py`): Progressive page streaming across the thread boundary with yield-based iterator, cooperative cancellation via `threading.Event`, normalized bounding boxes in $[0.0, 1.0]$ with top-left origin convention, hierarchical heading tags (`heading_h1` .. `heading_h6` + markdown `#`), and mid-slice resumption skipping pages prior to `start_from_page`.
-  - **Multi-Pass Fallback OCR Adapter** (`internal/vision/ocr/fallback_ocr.py`): Integrates PaddleOCR with automatic trigger when native text confidence falls below `settings.OCR_CONFIDENCE_THRESHOLD` (default 0.80) or when scanned image regions contain empty text streams, preserving reading order and unit bounding boxes.
-  - **Table Structure Extraction Engine** (`internal/vision/table/table_extractor.py`): Extracts tabular datasets, produces clean GitHub-Flavored Markdown (GFM) summaries, computes deterministic SHA-256 canonical table hashes (`table_hash`), and converts tables into strongly-typed columnar PyArrow `Table` schemas (inferred boolean, int64, float64, string).
-  - **Direct S3 Parquet Serializer** (`internal/vision/table/parquet_s3_writer.py`): Serializes tables directly to Snappy Parquet bytes and uploads to content-addressed paths `s3://<bucket>/artifacts/<tenant_id>/<doc_hash>/tables/<table_hash>.parquet` with mandatory S3 headers (`x-amz-meta-tenant-id`, `x-amz-meta-doc-hash`, `x-amz-meta-table-hash`, `x-amz-meta-page-number`, and `Content-Type: application/vnd.apache.parquet`).
-  - **Streaming gRPC AST Client** (`internal/transport/grpc/chunk_client.py`): Client-streaming gRPC transport implementing `DocumentAIChunkService.StreamDocumentAST`, transporting Parquet S3 URIs in `ASTNode.table_parquet_s3_uri` without binary leaks (ADR-003) and meeting the $\le 1.5$s manifest egress SLO.
-  - **VRAM & Memory Lifecycle Protocol** (`internal/vision/memory.py`): `cleanup_vram_and_memory()` flushing `torch.cuda.empty_cache()` and `gc.collect()` after each page/slice iteration to prevent GPU fragmentation and OOM errors.
-  - **Temporal Activity Integration** (`internal/temporal/activities/vision_activity.py`): Rewired `ParseDocumentSliceActivity` connecting layout parsing, OCR enhancement, direct S3 Parquet uploads, and gRPC AST chunk streaming while preserving 10s heartbeats, checkpoint resumption, and fail-fast `CORRUPT_INPUT_QUARANTINE`.
-  - **Comprehensive Test Suite** (`test/unit/`, `test/integration/`, `test/performance/`): 39 tests passing across coordinate normalization, layout streaming, fallback OCR, table hashing, Snappy Parquet serialization, S3 metadata, crash recovery at page 51, full pipeline integration, and $\le 1.5$s manifest egress SLO.
-
-## Next Up
-
-1. Phase 3: Audio Pipeline & Diarization (`internal/audio/`).
-2. Faster-Whisper Large-v3 speech-to-text integration with word-level timestamps.
-3. PyAnnote-Audio speaker diarization and absolute media timeline alignment.
+- **Phase 3: Dedicated Audio Pipeline & Speaker Diarization (Completed)**:
+  - **Audio Models & Data Structures** (`internal/audio/models.py`): Defined `WordTiming`, `RawWhisperSegment`, `SpeakerTurn`, and `AlignedTranscriptSegment` maintaining strict absolute timeline mapping.
+  - **Faster-Whisper Large-v3 Speech-to-Text Engine** (`internal/audio/asr/whisper_engine.py`): High-throughput CTranslate2 runner with word-level timestamps, cooperative cancellation (`threading.Event`), progressive interval yielding, mid-window offset resumption skipping audio prior to `start_from_offset`, and native/mock fallback execution.
+  - **PyAnnote 3.1 Speaker Diarization Adapter** (`internal/audio/diarization/pyannote_engine.py`): Voiceprint clustering engine with Hugging Face Hub token authentication (`settings.HF_TOKEN`), caching in `settings.HF_HOME`, speaker count constraints (`min_speakers`, `max_speakers`), and cooperative cancellation.
+  - **Timeline Alignment & Absolute Timeline Engine** (`internal/audio/alignment.py`): Word-to-speaker turn temporal overlap assignment with silence gap fallback (preceding turn or `SPEAKER_00`), grouping consecutive words by speaker and silence threshold ($1.5$s), and projecting all word and segment timestamps to the global media timeline (ADR-009).
+  - **Streaming gRPC Audio Transport Client** (`internal/transport/grpc/chunk_client.py`): Implemented `stream_audio_transcript` adhering to `DocumentAIChunkService.StreamAudioTranscript` with Protobuf `AudioTranscriptChunk`, `TranscriptSegment`, and `WordTimestamp` serialization, batched streaming, server acknowledgment validation, and resilient offline fallback.
+  - **Audio VRAM & Host Memory Lifecycle Protocol** (`internal/audio/memory.py`): `cleanup_vram_and_memory()` flushing `torch.cuda.empty_cache()` and `gc.collect()` after each window execution.
+  - **Temporal Activity Integration** (`internal/temporal/activities/audio_activity.py`): Production `TranscribeAudioWindowActivity` with physical WAV container & header validation (`wave` RIFF inspection), non-retryable fail-fast quarantine (`CORRUPT_INPUT_QUARANTINE`), mid-window checkpoint recovery, thread-isolated execution via `asyncio.to_thread()`, 10s heartbeats via `HeartbeatRunner`, gRPC streaming, and Prometheus delta accounting ($\Delta = \text{processed} - \text{start\_from\_offset}$).
+  - **Comprehensive Verification Suite** (`test/unit/`, `test/integration/`, `test/performance/`): Added 12 new tests covering Whisper transcription, PyAnnote diarization, timeline alignment, absolute timeline projections, gRPC streaming, end-to-end activity execution, mid-window checkpoint recovery, physical corruption quarantine, and Real-Time Factor performance (RTF $\le 0.15$).
 
 - **Environment & Tooling**:
   - Installed and configured **Ruff** for linting, formatting, and import sorting in `pyproject.toml`.
