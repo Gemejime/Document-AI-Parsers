@@ -98,6 +98,38 @@ class WorkerSettings(BaseSettings):
         default="us-east-1",
         description="AWS region for S3 bucket operations",
     )
+    WHISPER_MODEL_SIZE: str = Field(
+        default="large-v3",
+        description="Faster-Whisper model size variant (tiny, base, small, medium, large-v3)",
+    )
+    WHISPER_DEVICE: str = Field(
+        default="cuda",
+        description="Inference device for Faster-Whisper (cuda, cpu)",
+    )
+    WHISPER_COMPUTE_TYPE: str = Field(
+        default="float16",
+        description="Quantization and compute type for Faster-Whisper (float16, int8_float16, float32)",
+    )
+    WHISPER_BEAM_SIZE: int = Field(
+        default=5,
+        description="Beam search size for Whisper decoding",
+    )
+    PYANNOTE_MODEL_ID: str = Field(
+        default="pyannote/speaker-diarization-3.1",
+        description="Hugging Face model repository ID for PyAnnote speaker diarization",
+    )
+    HF_TOKEN: str | None = Field(
+        default=None,
+        description="Hugging Face authentication token for gated model repositories",
+    )
+    AUDIO_SAMPLE_RATE: int = Field(
+        default=16000,
+        description="Standard audio sample rate in Hz for Whisper and PyAnnote",
+    )
+    AUDIO_PROGRESS_STEP_SECONDS: float = Field(
+        default=30.0,
+        description="Audio window interval chunk size in seconds for progressive processing",
+    )
 
 
 # Global singleton settings
@@ -179,6 +211,8 @@ def configure_logging(custom_settings: WorkerSettings | None = None) -> None:
     os.environ["TORCH_HOME"] = cfg.TORCH_HOME
     os.environ["DOCLING_CACHE_DIR"] = cfg.DOCLING_CACHE_DIR
     os.environ["WHISPER_CACHE_DIR"] = cfg.WHISPER_CACHE_DIR
+    if cfg.HF_TOKEN:
+        os.environ["HF_TOKEN"] = cfg.HF_TOKEN
 
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
