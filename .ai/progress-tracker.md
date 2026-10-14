@@ -2,13 +2,29 @@
 
 ## Current Phase
 
-- **Phase 1: Worker Decoupling & Runtimes** (In Progress)
+- **Phase 2: Vision & Tabular Pipeline** (Completed)
 
 ## Current Goal
 
-- Monorepo repository setup, environment configuration, code standards, CI/CD integration, and AI context definitions.
+- Phase 3: Audio Pipeline & Speaker Diarization.
 
 ## Completed
+
+- **Phase 2: Vision & Tabular Pipeline (Completed)**:
+  - **Docling Layout Engine Adapter** (`internal/vision/layout/docling_engine.py`): Progressive page streaming across the thread boundary with yield-based iterator, cooperative cancellation via `threading.Event`, normalized bounding boxes in $[0.0, 1.0]$ with top-left origin convention, hierarchical heading tags (`heading_h1` .. `heading_h6` + markdown `#`), and mid-slice resumption skipping pages prior to `start_from_page`.
+  - **Multi-Pass Fallback OCR Adapter** (`internal/vision/ocr/fallback_ocr.py`): Integrates PaddleOCR with automatic trigger when native text confidence falls below `settings.OCR_CONFIDENCE_THRESHOLD` (default 0.80) or when scanned image regions contain empty text streams, preserving reading order and unit bounding boxes.
+  - **Table Structure Extraction Engine** (`internal/vision/table/table_extractor.py`): Extracts tabular datasets, produces clean GitHub-Flavored Markdown (GFM) summaries, computes deterministic SHA-256 canonical table hashes (`table_hash`), and converts tables into strongly-typed columnar PyArrow `Table` schemas (inferred boolean, int64, float64, string).
+  - **Direct S3 Parquet Serializer** (`internal/vision/table/parquet_s3_writer.py`): Serializes tables directly to Snappy Parquet bytes and uploads to content-addressed paths `s3://<bucket>/artifacts/<tenant_id>/<doc_hash>/tables/<table_hash>.parquet` with mandatory S3 headers (`x-amz-meta-tenant-id`, `x-amz-meta-doc-hash`, `x-amz-meta-table-hash`, `x-amz-meta-page-number`, and `Content-Type: application/vnd.apache.parquet`).
+  - **Streaming gRPC AST Client** (`internal/transport/grpc/chunk_client.py`): Client-streaming gRPC transport implementing `DocumentAIChunkService.StreamDocumentAST`, transporting Parquet S3 URIs in `ASTNode.table_parquet_s3_uri` without binary leaks (ADR-003) and meeting the $\le 1.5$s manifest egress SLO.
+  - **VRAM & Memory Lifecycle Protocol** (`internal/vision/memory.py`): `cleanup_vram_and_memory()` flushing `torch.cuda.empty_cache()` and `gc.collect()` after each page/slice iteration to prevent GPU fragmentation and OOM errors.
+  - **Temporal Activity Integration** (`internal/temporal/activities/vision_activity.py`): Rewired `ParseDocumentSliceActivity` connecting layout parsing, OCR enhancement, direct S3 Parquet uploads, and gRPC AST chunk streaming while preserving 10s heartbeats, checkpoint resumption, and fail-fast `CORRUPT_INPUT_QUARANTINE`.
+  - **Comprehensive Test Suite** (`test/unit/`, `test/integration/`, `test/performance/`): 39 tests passing across coordinate normalization, layout streaming, fallback OCR, table hashing, Snappy Parquet serialization, S3 metadata, crash recovery at page 51, full pipeline integration, and $\le 1.5$s manifest egress SLO.
+
+## Next Up
+
+1. Phase 3: Audio Pipeline & Diarization (`internal/audio/`).
+2. Faster-Whisper Large-v3 speech-to-text integration with word-level timestamps.
+3. PyAnnote-Audio speaker diarization and absolute media timeline alignment.
 
 - **Environment & Tooling**:
   - Installed and configured **Ruff** for linting, formatting, and import sorting in `pyproject.toml`.

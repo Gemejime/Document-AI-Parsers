@@ -1,6 +1,8 @@
 """Temporal activity for parsing physical PDF slices with thread isolation and heartbeats."""
 
 import asyncio
+import os
+import tempfile
 import threading
 import time
 from datetime import UTC, datetime
@@ -11,7 +13,12 @@ from temporalio.exceptions import ApplicationError
 
 from internal.config.settings import structlog
 from internal.server.probe_server import get_probe_metrics
+from internal.storage.s3_client import S3ClientProtocol, S3StorageClient
 from internal.temporal.common.heartbeat_runner import HeartbeatRunner, ProgressTracker
+from internal.transport.grpc.chunk_client import ChunkClientProtocol, ChunkServiceClient
+from internal.vision.layout.docling_engine import DoclingEngine, PageLayoutResult
+from internal.vision.ocr.fallback_ocr import FallbackOCREngine
+from internal.vision.table.parquet_s3_writer import ParquetS3Writer
 
 
 logger = structlog.get_logger(__name__)
@@ -48,47 +55,62 @@ class ParseDocumentSliceOutput(BaseModel):
     duration_seconds: float
 
 
-def _simulate_vision_slice_worker(
-    input_data: ParseDocumentSliceInput,
+def _execute_vision_pipeline_thread(
+    local_pdf_path: str,
     start_from_page: int,
+    total_pages: int,
     tracker: ProgressTracker,
     stop_event: threading.Event,
-) -> tuple[int, int, list[str]]:
-    """Worker thread execution simulating heavy Docling/OCR parsing per-page."""
-    pages_processed = 0
-    tables_found = 0
-    parquet_uris: list[str] = []
+    docling_engine: DoclingEngine,
+    ocr_engine: FallbackOCREngine,
+) -> list[PageLayoutResult]:
+    """Execute layout parsing and OCR enhancement in dedicated worker thread."""
+    results: list[PageLayoutResult] = []
 
-    for page_idx in range(start_from_page, input_data.page_count):
-        if stop_event.is_set():
-            logger.info(
-                "vision_worker_thread_aborting_on_stop_event",
-                page_idx=page_idx,
-            )
-            break
+    def on_page_done(page_res: PageLayoutResult) -> None:
+        # Enhance any degraded spans using fallback OCR
+        page_res.nodes = ocr_engine.enhance_nodes(page_res.nodes)
 
-        # Simulate CPU/GIL-safe page parsing step
-        time.sleep(0.01)
-
-        pages_processed += 1
+        # Emit progress checkpoint to HeartbeatRunner
         now_iso = datetime.now(UTC).isoformat()
         checkpoint = VisionHeartbeatDetails(
-            current_page=page_idx,
-            pages_completed=page_idx + 1,
-            total_pages=input_data.page_count,
+            current_page=page_res.page_number - 1,
+            pages_completed=page_res.page_number,
+            total_pages=total_pages,
             last_checkpoint_timestamp_utc=now_iso,
         )
         tracker.update(checkpoint.model_dump())
 
-    return pages_processed, tables_found, parquet_uris
+    for page_res in docling_engine.parse_slice_pages(
+        pdf_path=local_pdf_path,
+        start_from_page=start_from_page,
+        total_pages=total_pages,
+        stop_event=stop_event,
+        on_page_complete=on_page_done,
+    ):
+        results.append(page_res)
+
+    return results
 
 
 @activity.defn(name="ParseDocumentSliceActivity")
 class ParseDocumentSliceActivity:
     """Temporal activity parsing PDF slices into structured AST nodes and Parquet tables."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        s3_client: S3ClientProtocol | None = None,
+        chunk_client: ChunkClientProtocol | None = None,
+        docling_engine: DoclingEngine | None = None,
+        ocr_engine: FallbackOCREngine | None = None,
+        parquet_writer: ParquetS3Writer | None = None,
+    ) -> None:
         self.metrics = get_probe_metrics()
+        self.s3_client = s3_client or S3StorageClient()
+        self.chunk_client = chunk_client or ChunkServiceClient()
+        self.docling_engine = docling_engine or DoclingEngine(use_native=True)
+        self.ocr_engine = ocr_engine or FallbackOCREngine(use_native=True)
+        self.parquet_writer = parquet_writer or ParquetS3Writer(s3_client=self.s3_client)
 
     @activity.defn
     async def run(self, input_data: ParseDocumentSliceInput) -> ParseDocumentSliceOutput:
@@ -137,7 +159,20 @@ class ParseDocumentSliceActivity:
                     error=str(exc),
                 )
 
-        # 3. Offload compute to worker thread with HeartbeatRunner
+        # 3. Stage local PDF file path
+        local_scratch_dir = tempfile.gettempdir()
+        local_pdf_path = os.path.join(
+            local_scratch_dir,
+            f"{input_data.doc_hash}_{input_data.start_page}.pdf",
+        )
+
+        await self.s3_client.fetch_slice(
+            bucket=input_data.s3_bucket,
+            key=input_data.s3_key,
+            destination_path=local_pdf_path,
+        )
+
+        # 4. Offload compute to worker thread with HeartbeatRunner
         tracker = ProgressTracker()
         runner = HeartbeatRunner(
             activity_name="ParseDocumentSliceActivity",
@@ -146,14 +181,42 @@ class ParseDocumentSliceActivity:
         )
 
         async with runner:
-            pages_done, table_count, parquet_uris = await asyncio.to_thread(
-                _simulate_vision_slice_worker,
-                input_data,
+            page_results = await asyncio.to_thread(
+                _execute_vision_pipeline_thread,
+                local_pdf_path,
                 start_from_page,
+                input_data.page_count,
                 tracker,
                 runner.stop_event,
+                self.docling_engine,
+                self.ocr_engine,
             )
 
+        # 5. Extract tables and upload Parquet datasets directly to S3
+        total_tables = 0
+        parquet_uris: list[str] = []
+
+        for page in page_results:
+            for node in page.nodes:
+                if node.node_type == "table" and node.table_data is not None:
+                    total_tables += 1
+                    s3_uri, _table_hash = await self.parquet_writer.write_table_to_s3(
+                        table_data=node.table_data,
+                        bucket=input_data.s3_bucket,
+                        tenant_id=input_data.tenant_id,
+                        doc_hash=input_data.doc_hash,
+                    )
+                    node.table_parquet_s3_uri = s3_uri
+                    parquet_uris.append(s3_uri)
+
+        # 6. Stream AST chunks over gRPC to rag-chunk-lifecycle-service
+        ast_streamed = await self.chunk_client.stream_document_ast(
+            tenant_id=input_data.tenant_id,
+            document_id=input_data.document_id,
+            chunks_generator=page_results,
+        )
+
+        pages_done = len(page_results)
         duration = time.monotonic() - start_time
         self.metrics.pages_processed_total.labels(worker_type="vision").inc(pages_done)
         self.metrics.task_duration_seconds.labels(
@@ -165,13 +228,14 @@ class ParseDocumentSliceActivity:
             tenant_id=input_data.tenant_id,
             document_id=input_data.document_id,
             pages_processed=pages_done,
+            table_count=total_tables,
             duration_seconds=round(duration, 3),
         )
 
         return ParseDocumentSliceOutput(
             pages_processed=pages_done,
-            table_count=table_count,
+            table_count=total_tables,
             parquet_s3_uris=parquet_uris,
-            ast_streamed=True,
+            ast_streamed=ast_streamed,
             duration_seconds=duration,
         )

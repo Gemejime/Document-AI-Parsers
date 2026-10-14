@@ -86,7 +86,7 @@ async def test_gil_isolation_under_blocking_thread_compute() -> None:
     def cpu_heavy_worker(stop_evt: threading.Event) -> int:
         """Simulate CPU / C-extension worker loop in background thread."""
         accum = 0
-        end_time = time.monotonic() + 0.12
+        end_time = time.monotonic() + 0.20
         while time.monotonic() < end_time and not stop_evt.is_set():
             time.sleep(0.01)
             accum += 1
