@@ -63,3 +63,8 @@
 - Python 3.11+ compatibility target with Ruff 0.16.6 installed.
 - Pressure test recommendations executed and specifications hardened against `tasks/` blueprints.
 - Code review feedback addressed: standardized portable relative documentation paths across `.ai.md`, `GEMINI.md`, and `.ai/ai-workflow-rules.md`; clarified host-heap memory role of `jemalloc`; scoped container capabilities and read-only rootfs mounts in `.ai/security.md`; locked `/api/docs` to raw OpenAPI 3.1 schema; standardized pytest testpaths to `test/unit` and `test/integration`.
+- Implemented and verified complete GitHub Actions CI/CD automation suite:
+  - `.github/workflows/ci.yml`: Ruff lint/format checks, strict Mypy type validation, Pytest unit/integration test suite with coverage upload, Protobuf v1 syntax & schema validation, Helm values YAML linting, Gitleaks security scanning, and multi-stage Dockerfile smoke builds.
+  - `.github/workflows/docker-publish.yml`: Multi-image matrix build and publish for `doc-ai-vision-worker` and `doc-ai-audio-worker` to GitHub Container Registry (`ghcr.io`) with Docker Buildx and GitHub Actions layer caching.
+  - `Makefile`: Standardized automation entry points (`make lint`, `make format`, `make typecheck`, `make test`, `make proto`, `make check`).
+  - `api/proto/v1/`: Implemented Protobuf v3 contracts (`common.proto` and `document_ai.proto`) for normalized bounding boxes and gRPC streaming to `rag-chunk-lifecycle-service`.
