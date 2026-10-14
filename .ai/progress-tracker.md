@@ -37,7 +37,14 @@
 
 ## In Progress
 
-- Phase 2: Vision & Tabular Pipeline Preparation.
+- Phase 2: Vision & Tabular Pipeline Preparation & Implementation.
+
+## Completed (Phase 2 Prep & Pressure Testing)
+
+- **Comprehensive Architectural Pressure Testing**:
+  - Pressure tested `prompts/phase-2-vision-tabular-pipeline.md` against all five architectural specifications in `tasks/`, specifically `tasks/RAG Document AI Worker Implementation Plan.pdf`.
+  - Hardened specifications for Table-Transformer boundary detection, canonical SHA-256 table hash calculation, PaddleOCR fallback integration, VRAM cache flushing hooks (`torch.cuda.empty_cache()` + `gc.collect()`), heading hierarchy tagging (`heading_h1` .. `heading_h6` + markdown `#`), and client-streaming gRPC manifest egress ($\le 1.5$s SLO).
+  - Updated `prompts/phase-2-vision-tabular-pipeline.md` with complete implementation plan.
 
 ## Next Up
 
