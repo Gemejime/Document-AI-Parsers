@@ -57,6 +57,12 @@ class ProbeMetrics:
             ["worker_type"],
             registry=self.registry,
         )
+        self.activity_failures_total = Counter(
+            "doc_ai_activity_failures_total",
+            "Total count of activity processing failures encountered",
+            ["activity_name"],
+            registry=self.registry,
+        )
 
         # Histograms
         self.task_duration_seconds = Histogram(

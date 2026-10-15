@@ -132,5 +132,6 @@ testpaths = [
     "test/unit",
     "test/integration",
     "test/performance",
+    "test/chaos",
 ]
 asyncio_mode = "auto"

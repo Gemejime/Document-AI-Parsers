@@ -1,6 +1,8 @@
 # Helm values for doc-ai-audio-worker
 replicaCount: 1
 
+workerComponent: "audio-worker"
+
 image:
   repository: rag-document-ai-audio-worker
   tag: "0.1.0"
@@ -108,3 +110,12 @@ autoscaling:
         metricName: "temporal_activity_schedule_to_start_seconds"
         query: 'sum(temporal_activity_schedule_to_start_seconds{task_queue="doc-ai-audio-queue"})'
         threshold: "3"
+
+serviceMonitor:
+  enabled: true
+  interval: "15s"
+  scrapeTimeout: "10s"
+
+prometheusRule:
+  enabled: true
+

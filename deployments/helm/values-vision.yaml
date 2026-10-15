@@ -1,6 +1,8 @@
 # Helm values for doc-ai-vision-worker
 replicaCount: 2
 
+workerComponent: "vision-worker"
+
 image:
   repository: rag-document-ai-vision-worker
   tag: "0.1.0"
@@ -108,3 +110,12 @@ autoscaling:
         metricName: "temporal_activity_schedule_to_start_seconds"
         query: 'sum(temporal_activity_schedule_to_start_seconds{task_queue="doc-ai-vision-queue"})'
         threshold: "5"
+
+serviceMonitor:
+  enabled: true
+  interval: "15s"
+  scrapeTimeout: "10s"
+
+prometheusRule:
+  enabled: true
+
