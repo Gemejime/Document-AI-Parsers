@@ -2,13 +2,38 @@
 
 ## Current Phase
 
-- **Phase 3: Dedicated Audio Pipeline & Speaker Diarization** (Completed)
+- **Phase 4: Chaos Testing, KEDA Scaling & GitOps ArgoCD Integration** (Completed)
 
 ## Current Goal
 
-- Microservice Production Deployment & Integration Pressure Testing.
+- Production Hardening & Full End-to-End Orchestration Validation.
 
 ## Completed
+
+- **Phase 4: Chaos Testing, KEDA Scaling & GitOps ArgoCD Integration (Completed)**:
+  - **Production Helm 3 Chart Suite** (`deployments/helm/`):
+    - `Chart.yaml`: Helm 3 specification for `rag-document-ai-worker` (`v0.1.0`).
+    - `templates/_helpers.tpl`: Standardized macro labels (`helm.sh/chart`, `app.kubernetes.io/name`, `app.kubernetes.io/instance`, `app.kubernetes.io/component`, `app.kubernetes.io/managed-by`).
+    - `templates/serviceaccount.yaml`: Dedicated Kubernetes `ServiceAccount` with AWS IRSA / GCP Workload Identity annotation support.
+    - `templates/deployment.yaml`: Parameterized workload deployment for `doc-ai-vision-worker` and `doc-ai-audio-worker` profiles with 1x NVIDIA GPU, 2 GiB memory `/dev/shm` emptyDir, 4 GiB `/tmp`, NVMe model weights cache, non-root security context (`runAsUser: 1000`, `readOnlyRootFilesystem: true`, `drop: [ALL]`), and jemalloc memory tuning.
+    - `templates/service.yaml`: ClusterIP service exposing probe and Prometheus scrape port 8080.
+    - `templates/pvc.yaml`: PersistentVolumeClaim for NVMe model weights (`doc-ai-model-weights-nvme-pvc`).
+    - `templates/keda-scaledobject.yaml`: KEDA `ScaledObject` driven by Temporal queue depth (`doc-ai-vision-queue` threshold: 5, `doc-ai-audio-queue` threshold: 3).
+    - `templates/servicemonitor.yaml`: Prometheus Operator `ServiceMonitor` targeting `/metrics` at 15s scrape interval.
+    - `templates/prometheusrule.yaml`: Prometheus alerting rules (`QueueBacklogGrowth`, `CudaOOMErrors`, `ActivityFailuresHigh`).
+    - Values configurations: `values.yaml` (base shared defaults), `values-vision.yaml`, and `values-audio.yaml`.
+  - **GitOps ArgoCD Declarative Delivery** (`deployments/argocd/`):
+    - `application-vision.yaml`: ArgoCD Application targeting `doc-ai` namespace with `values-vision.yaml`.
+    - `application-audio.yaml`: ArgoCD Application targeting `doc-ai` namespace with `values-audio.yaml`.
+    - `applicationset.yaml`: Multi-environment matrix generator (`staging`, `production`) across decoupled worker clusters.
+    - **KEDA Drift Immunity**: Configured `ignoreDifferences` for `/spec/replicas` preventing ArgoCD from overwriting dynamic KEDA autoscaling.
+    - **GitOps Release Tag Sync**: Updated `.github/workflows/docker-publish.yml` with `permissions: contents: write` and automated Helm image tag synchronization on release tags (`v*.*.*`).
+  - **Chaos Testing & Resiliency Verification Suite** (`test/chaos/`, `test/performance/`, `test/unit/`):
+    - `test/chaos/test_checkpoint_chaos.py`: Simulates abrupt SIGKILL interruption at vision page 52 and audio offset 45s, asserting exact delta recovery (49 pages remaining and 75s audio remaining) and transactional S3 Parquet writing idempotency.
+    - `test/performance/test_vram_soak.py`: Dual-mode soak test suite featuring CI regression memory drift tracking (< 1% delta via `tracemalloc` and `gc.get_objects()`) and extended 6-hour GPU soak test.
+    - `test/unit/test_telemetry_metrics.py`: Asserts all 8 mandatory Prometheus metrics and alert expressions conform to specifications.
+    - Telemetry extension: Registered `doc_ai_activity_failures_total` counter in `internal/server/probe_server.py`.
+
 
 - **Phase 3: Dedicated Audio Pipeline & Speaker Diarization (Completed)**:
   - **Audio Models & Data Structures** (`internal/audio/models.py`): Defined `WordTiming`, `RawWhisperSegment`, `SpeakerTurn`, and `AlignedTranscriptSegment` maintaining strict absolute timeline mapping.

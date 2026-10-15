@@ -379,3 +379,48 @@ message BoundingBox {
 - `cleanup_vram_and_memory()`:
   - Flushes `torch.cuda.empty_cache()` and `gc.collect()` after each audio window execution.
 
+---
+
+## 7. Production Deployment, Autoscaling & Observability Specifications
+
+### A. Production Helm 3 Chart (`deployments/helm/`)
+The microservice is packaged as a Helm 3 chart (`rag-document-ai-worker`, `v0.1.0`) providing parameterized deployments for both decoupled worker types:
+
+| Component | Values File | Task Queue | Default Replicas | GPU Allocation |
+| :--- | :--- | :--- | :--- | :--- |
+| `doc-ai-vision-worker` | `values-vision.yaml` | `doc-ai-vision-queue` | 2 (Min: 2, Max: 20) | 1x NVIDIA L4/A10G |
+| `doc-ai-audio-worker` | `values-audio.yaml` | `doc-ai-audio-queue` | 1 (Min: 1, Max: 10) | 1x NVIDIA L4/A10G |
+
+#### Memory & Security Isolations
+- **IPC / PyTorch DataLoader**: 2 GiB memory-backed `emptyDir` mounted at `/dev/shm`.
+- **Scratch Buffer**: 4 GiB `emptyDir` mounted at `/tmp`.
+- **Pre-baked Model Cache**: Read-only NVMe PVC mount at `/models/cache` (`doc-ai-model-weights-nvme-pvc`).
+- **Security Context**: Non-root execution (`runAsUser: 1000`, `runAsGroup: 1000`, `runAsNonRoot: true`), `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, and capabilities drop (`drop: [ALL]`).
+
+### B. KEDA Autoscaling (`templates/keda-scaledobject.yaml`)
+Autoscaling is driven dynamically by Temporal task queue schedule-to-start latency / queue depth:
+- `doc-ai-vision-queue`: Target threshold **5** pending tasks/pod, `minReplicaCount: 2`, `maxReplicaCount: 20`, `cooldownPeriod: 300s`, `pollingInterval: 15s`.
+- `doc-ai-audio-queue`: Target threshold **3** pending tasks/pod, `minReplicaCount: 1`, `maxReplicaCount: 10`, `cooldownPeriod: 300s`, `pollingInterval: 15s`.
+
+### C. GitOps ArgoCD Integration & KEDA Drift Immunity
+ArgoCD manifests (`deployments/argocd/`) deploy the decoupled worker workloads across staging and production namespaces (`doc-ai`, `doc-ai-staging`):
+- **Drift Immunity**: Configures `ignoreDifferences` on `apps/Deployment` for `/spec/replicas` so ArgoCD does not overwrite dynamic KEDA replica counts back to static Git values.
+- **Automated Sync**: Configures `selfHeal: true`, `prune: true`, and exponential retry backoff.
+
+### D. Prometheus Observability & Alerting Rules (`templates/prometheusrule.yaml`)
+The worker exposes 8 operational metrics at `GET /metrics`:
+- `doc_ai_pages_processed_total`: Total document pages processed.
+- `doc_ai_audio_seconds_processed_total`: Total seconds of audio transcribed.
+- `doc_ai_heartbeat_emissions_total`: Total Temporal activity heartbeats emitted.
+- `doc_ai_cuda_oom_errors_total`: Total CUDA Out-of-Memory exceptions.
+- `doc_ai_task_duration_seconds`: Histogram of task execution latency.
+- `doc_ai_heartbeat_delay_seconds`: Histogram of heartbeat emission intervals.
+- `doc_ai_vram_allocated_bytes`: Gauge of GPU VRAM allocated.
+- `doc_ai_activity_failures_total`: Counter of activity processing failures.
+
+#### Alerting Invariants
+- `QueueBacklogGrowth` (Warning): Triggered when `schedule_to_start` latency on either queue exceeds 45s for > 3 minutes.
+- `CudaOOMErrors` (Page): Triggered immediately when `rate(doc_ai_cuda_oom_errors_total[5m]) > 0`.
+- `ActivityFailuresHigh` (Page): Triggered when activity failure rate exceeds 2% across 10 minutes (`rate(doc_ai_activity_failures_total[10m]) / rate(doc_ai_task_duration_seconds_count[10m]) > 0.02`).
+
+
