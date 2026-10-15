@@ -1,0 +1,70 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: rag-document-ai-workers
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: rag-document-ai
+spec:
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - env: staging
+                  cluster: https://kubernetes.default.svc
+                  namespace: doc-ai-staging
+                  revision: HEAD
+                - env: production
+                  cluster: https://kubernetes.default.svc
+                  namespace: doc-ai
+                  revision: HEAD
+          - list:
+              elements:
+                - worker: vision
+                  valuesFile: values-vision.yaml
+                  appName: doc-ai-vision-worker
+                - worker: audio
+                  valuesFile: values-audio.yaml
+                  appName: doc-ai-audio-worker
+  template:
+    metadata:
+      name: "{{appName}}-{{env}}"
+      namespace: argocd
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      labels:
+        app.kubernetes.io/name: "{{appName}}"
+        app.kubernetes.io/environment: "{{env}}"
+        app.kubernetes.io/part-of: rag-document-ai
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/Gemejime/Document-AI-Parsers.git
+        targetRevision: "{{revision}}"
+        path: deployments/helm
+        helm:
+          valueFiles:
+            - values.yaml
+            - "{{valuesFile}}"
+      destination:
+        server: "{{cluster}}"
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas
