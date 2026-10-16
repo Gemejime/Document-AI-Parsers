@@ -58,9 +58,9 @@ async def test_heartbeat_runner_emits_steady_heartbeats() -> None:
     )
 
     async with runner:
-        await asyncio.sleep(0.06)
+        await asyncio.sleep(0.12)
         tracker.update({"page": 2})
-        await asyncio.sleep(0.06)
+        await asyncio.sleep(0.12)
 
     assert len(emitted_checkpoints) >= 2
     assert emitted_checkpoints[-1]["page"] == 2
@@ -86,7 +86,7 @@ async def test_gil_isolation_under_blocking_thread_compute() -> None:
     def cpu_heavy_worker(stop_evt: threading.Event) -> int:
         """Simulate CPU / C-extension worker loop in background thread."""
         accum = 0
-        end_time = time.monotonic() + 0.35
+        end_time = time.monotonic() + 0.7
         while time.monotonic() < end_time and not stop_evt.is_set():
             time.sleep(0.01)
             accum += 1

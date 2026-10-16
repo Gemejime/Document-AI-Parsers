@@ -40,18 +40,31 @@ async def run_worker() -> None:
     )
     server = uvicorn.Server(server_config)
 
-    # 2. Connect to Temporal cluster
-    try:
-        temporal_client = await Client.connect(
-            settings.TEMPORAL_HOST,
-            namespace=settings.TEMPORAL_NAMESPACE,
-        )
-        logger.info("connected_to_temporal", host=settings.TEMPORAL_HOST)
-    except Exception as exc:
-        logger.error("temporal_connection_failed", error=str(exc))
-        # Keep server running so /ready correctly reports 503 while retrying
-        await server.serve()
-        return
+    # 2. Connect to Temporal cluster with retry and exponential backoff
+    temporal_client: Client | None = None
+    max_retries = 5
+    for attempt in range(1, max_retries + 1):
+        try:
+            temporal_client = await Client.connect(
+                settings.TEMPORAL_HOST,
+                namespace=settings.TEMPORAL_NAMESPACE,
+            )
+            logger.info("connected_to_temporal", host=settings.TEMPORAL_HOST)
+            break
+        except Exception as exc:
+            logger.warning(
+                "temporal_connection_attempt_failed",
+                attempt=attempt,
+                max_retries=max_retries,
+                error=str(exc),
+            )
+            if attempt == max_retries:
+                logger.error("temporal_connection_failed", error=str(exc))
+                sys.exit(1)
+            await asyncio.sleep(min(2 ** (attempt - 1), 10))
+
+    if temporal_client is None:
+        sys.exit(1)
 
     activity_instance = ParseDocumentSliceActivity()
     worker = Worker(
@@ -65,11 +78,15 @@ async def run_worker() -> None:
 
     # 4. Handle signals
     loop = asyncio.get_running_loop()
+    shutdown_task: asyncio.Task[None] | None = None
 
     def handle_shutdown(*_args: Any) -> None:
+        nonlocal shutdown_task
         logger.info("shutdown_signal_received")
         set_probe_ready(False, worker_type="vision")
         server.should_exit = True
+        if shutdown_task is None:
+            shutdown_task = asyncio.create_task(worker.shutdown())
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         with contextlib.suppress(NotImplementedError):

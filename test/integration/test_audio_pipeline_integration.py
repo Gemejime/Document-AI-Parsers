@@ -2,6 +2,7 @@
 
 import os
 import wave
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -51,13 +52,15 @@ class DummyChunkClient(ChunkClientProtocol):
         self,
         tenant_id: str,
         audio_id: str,
-        segments_generator: object,
+        segments_generator: Any,
+        batch_size: int = 50,
     ) -> bool:
         return bool(
             await self.mock_audio(
                 tenant_id=tenant_id,
                 audio_id=audio_id,
                 segments_generator=segments_generator,
+                batch_size=batch_size,
             )
         )
 
@@ -65,7 +68,7 @@ class DummyChunkClient(ChunkClientProtocol):
         self,
         tenant_id: str,
         document_id: str,
-        chunks_generator: object,
+        chunks_generator: Any,
     ) -> bool:
         return bool(
             await self.mock_ast(

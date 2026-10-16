@@ -1,5 +1,7 @@
 """Unit test verifying Prometheus telemetry registry, metrics collection, and alerting expressions."""
 
+from typing import Any
+
 import prometheus_client
 from fastapi.testclient import TestClient
 
@@ -55,7 +57,7 @@ def test_required_telemetry_metrics_registered() -> None:
 
 def test_prometheus_alert_expressions_reference_valid_metrics() -> None:
     """Verify Prometheus alerting expressions parse and reference valid registered metric names."""
-    alert_rules = [
+    alert_rules: list[dict[str, Any]] = [
         {
             "name": "QueueBacklogGrowth",
             "expr": "max_over_time(temporal_activity_schedule_to_start_seconds[3m]) > 45",

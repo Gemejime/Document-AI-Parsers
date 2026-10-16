@@ -1,6 +1,6 @@
 """Streaming gRPC client for rag-chunk-lifecycle-service implementing DocumentAIChunkService."""
 
-from collections.abc import AsyncIterator, Iterable, Sequence
+from collections.abc import AsyncIterable, AsyncIterator, Iterable, Sequence
 from typing import Any, Protocol
 
 import grpc
@@ -97,7 +97,7 @@ class ChunkClientProtocol(Protocol):
         self,
         tenant_id: str,
         document_id: str,
-        chunks_generator: AsyncIterator[Any] | Sequence[Any],
+        chunks_generator: AsyncIterator[Any] | Sequence[Any] | Iterable[Any],
     ) -> bool:
         """Stream parsed AST document chunks to rag-chunk-lifecycle-service."""
         ...
@@ -106,7 +106,8 @@ class ChunkClientProtocol(Protocol):
         self,
         tenant_id: str,
         audio_id: str,
-        segments_generator: AsyncIterator[Any] | Sequence[Any],
+        segments_generator: AsyncIterator[Any] | Sequence[Any] | Iterable[Any],
+        batch_size: int = 50,
     ) -> bool:
         """Stream transcribed audio segments to rag-chunk-lifecycle-service."""
         ...
@@ -132,7 +133,7 @@ class ChunkServiceClient:
         pages_or_chunks: AsyncIterator[Any] | Sequence[Any] | Iterable[Any],
     ) -> AsyncIterator[Any]:
         """Convert input items to DocumentASTChunk protobufs asynchronously."""
-        if hasattr(pages_or_chunks, "__aiter__"):
+        if isinstance(pages_or_chunks, AsyncIterable):
             async for item in pages_or_chunks:
                 if isinstance(item, PageLayoutResult):
                     yield page_result_to_chunk_proto(tenant_id, document_id, item)
@@ -239,7 +240,7 @@ class ChunkServiceClient:
         )
 
         all_segments: list[Any] = []
-        if hasattr(segments_generator, "__aiter__"):
+        if isinstance(segments_generator, AsyncIterable):
             async for item in segments_generator:
                 all_segments.append(item)
         else:
