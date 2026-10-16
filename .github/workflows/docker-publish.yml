@@ -111,10 +111,15 @@ jobs:
       - name: Update Helm Chart & Values Image Tags
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "Updating Helm chart appVersion and values tags to ${VERSION}..."
+          WORKER="${{ github.event.inputs.worker || 'all' }}"
+          echo "Updating Helm chart appVersion and values tags to ${VERSION} for worker=${WORKER}..."
           sed -i "s/^appVersion: .*/appVersion: \"${VERSION}\"/" deployments/helm/Chart.yaml
-          sed -i -E '/^image:/,/^[a-zA-Z]/ s/^([[:space:]]+)tag:[[:space:]].*/\1tag: "'"${VERSION}"'"/' deployments/helm/values-vision.yaml
-          sed -i -E '/^image:/,/^[a-zA-Z]/ s/^([[:space:]]+)tag:[[:space:]].*/\1tag: "'"${VERSION}"'"/' deployments/helm/values-audio.yaml
+          if [ "$WORKER" = "vision" ] || [ "$WORKER" = "all" ]; then
+            sed -i -E '/^image:/,/^[a-zA-Z]/ s/^([[:space:]]+)tag:[[:space:]].*/\1tag: "'"${VERSION}"'"/' deployments/helm/values-vision.yaml
+          fi
+          if [ "$WORKER" = "audio" ] || [ "$WORKER" = "all" ]; then
+            sed -i -E '/^image:/,/^[a-zA-Z]/ s/^([[:space:]]+)tag:[[:space:]].*/\1tag: "'"${VERSION}"'"/' deployments/helm/values-audio.yaml
+          fi
 
       - name: Commit and Push GitOps Tag Sync
         run: |

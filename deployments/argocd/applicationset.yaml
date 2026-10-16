@@ -53,7 +53,7 @@ spec:
             - "{{valuesFile}}"
           parameters:
             - name: persistence.name
-              value: "{{pvcName}}"
+              value: doc-ai-model-weights-nvme-pvc
       destination:
         server: "{{cluster}}"
         namespace: "{{targetNamespace}}-{{env}}"
