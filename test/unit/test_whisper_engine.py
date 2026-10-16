@@ -77,3 +77,17 @@ def test_whisper_engine_cooperative_cancellation() -> None:
     )
 
     assert len(segments) == 0
+
+
+def test_whisper_engine_native_error_propagation() -> None:
+    """Verify WhisperEngine re-raises errors when use_native=True."""
+    import pytest
+
+    with pytest.raises((ModuleNotFoundError, ImportError)):
+        WhisperEngine(use_native=True)
+
+    engine = WhisperEngine(use_native=False)
+    engine.use_native = True
+    engine._model = None
+    with pytest.raises(RuntimeError):
+        list(engine.transcribe_intervals(audio_path="/fake/path.wav"))

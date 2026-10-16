@@ -24,6 +24,7 @@ def align_audio_timeline(
     Enforces the Absolute Timeline Invariant (ADR-009):
         timestamp_absolute = start_offset_seconds + start_from_offset + t_slice
     """
+    _ = start_from_offset
     if not whisper_segments:
         return []
 
@@ -69,15 +70,8 @@ def align_audio_timeline(
                 speaker_id = last_speaker_id
 
         # Project word onto absolute timeline (ADR-009)
-        # Check if w.start_time is relative to slice or already relative to window
-        if w.start_time >= start_from_offset:
-            t_slice = w.start_time - start_from_offset
-            dur = w.end_time - w.start_time
-            abs_start = round(start_offset_seconds + start_from_offset + t_slice, 3)
-            abs_end = round(abs_start + dur, 3)
-        else:
-            abs_start = round(start_offset_seconds + start_from_offset + w.start_time, 3)
-            abs_end = round(start_offset_seconds + start_from_offset + w.end_time, 3)
+        abs_start = round(start_offset_seconds + w.start_time, 3)
+        abs_end = round(start_offset_seconds + w.end_time, 3)
 
         projected_word = WordTiming(
             word=w.word,

@@ -89,3 +89,17 @@ def test_pyannote_engine_cooperative_cancellation() -> None:
     )
 
     assert len(turns) == 0
+
+
+def test_pyannote_engine_native_error_propagation() -> None:
+    """Verify PyAnnoteEngine re-raises errors when use_native=True."""
+    import pytest
+
+    with pytest.raises((ModuleNotFoundError, ImportError)):
+        PyAnnoteEngine(use_native=True)
+
+    engine = PyAnnoteEngine(use_native=False)
+    engine.use_native = True
+    engine._pipeline = None
+    with pytest.raises(RuntimeError):
+        engine.diarize_window(audio_path="/fake/path.wav")

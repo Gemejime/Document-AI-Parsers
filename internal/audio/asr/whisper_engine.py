@@ -50,11 +50,12 @@ class WhisperEngine:
                     compute_type=self.compute_type,
                 )
             except Exception as exc:
-                logger.warning(
-                    "faster_whisper_native_unavailable_using_simulated_runner",
+                logger.error(
+                    "faster_whisper_native_initialization_failed",
                     error=str(exc),
                 )
                 self._model = None
+                raise
 
     def _generate_simulated_interval(
         self,
@@ -141,7 +142,9 @@ class WhisperEngine:
         current_offset = start_from_offset
 
         # Check native execution availability
-        if self._model is not None:
+        if self.use_native:
+            if self._model is None:
+                raise RuntimeError("Native Faster-Whisper model is not initialized")
             try:
                 # Transcribe audio file using native Faster-Whisper
                 segments_iter, _info = self._model.transcribe(
@@ -199,12 +202,13 @@ class WhisperEngine:
                     yield buffered_segments
                 return
             except Exception as exc:
-                logger.warning(
-                    "native_whisper_transcription_failed_falling_back_to_simulated",
+                logger.error(
+                    "native_whisper_transcription_failed",
                     error=str(exc),
                 )
+                raise
 
-        # High-fidelity simulated progressive iteration
+        # High-fidelity simulated progressive iteration (used when use_native=False)
         while current_offset < total_duration_seconds:
             if stop_event is not None and stop_event.is_set():
                 logger.info(

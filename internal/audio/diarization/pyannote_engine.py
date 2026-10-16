@@ -48,11 +48,12 @@ class PyAnnoteEngine:
                     cache_dir=self.cache_dir,
                 )
             except Exception as exc:
-                logger.warning(
-                    "pyannote_native_pipeline_unavailable_using_simulated_runner",
+                logger.error(
+                    "pyannote_native_pipeline_loading_failed",
                     error=str(exc),
                 )
                 self._pipeline = None
+                raise
 
     def _generate_simulated_turns(
         self,
@@ -110,7 +111,9 @@ class PyAnnoteEngine:
         if start_from_offset >= duration_seconds:
             return []
 
-        if self._pipeline is not None:
+        if self.use_native:
+            if self._pipeline is None:
+                raise RuntimeError("PyAnnote native pipeline is not initialized")
             try:
                 # Prepare pipeline parameters
                 diarize_params: dict[str, Any] = {}
@@ -143,10 +146,11 @@ class PyAnnoteEngine:
                     )
                 return turns
             except Exception as exc:
-                logger.warning(
-                    "native_diarization_failed_falling_back_to_simulated",
+                logger.error(
+                    "native_diarization_failed",
                     error=str(exc),
                 )
+                raise
 
         return self._generate_simulated_turns(
             start_from_offset=start_from_offset,
