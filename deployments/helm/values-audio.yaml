@@ -11,6 +11,8 @@ image:
 environment: "production"
 
 env:
+  - name: ENVIRONMENT
+    value: "production"
   - name: TEMPORAL_HOST
     value: "temporal-frontend.temporal.svc.cluster.local:7233"
   - name: TEMPORAL_NAMESPACE

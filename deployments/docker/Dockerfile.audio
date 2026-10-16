@@ -19,7 +19,9 @@ RUN python3.11 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
+COPY cmd ./cmd
+COPY internal ./internal
 RUN pip install --upgrade pip wheel setuptools && \
     pip install .[audio]
 
