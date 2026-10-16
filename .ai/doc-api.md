@@ -132,6 +132,7 @@ Every worker pod (`doc-ai-vision-worker` and `doc-ai-audio-worker`) runs an inte
       current_offset_seconds: float
       processed_seconds: float
       total_seconds: float
+      segments: list[dict[str, Any]] = Field(default_factory=list)
   ```
 - **Output Result**:
   ```python

@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+from temporalio.exceptions import ApplicationError
 
 from internal.audio.asr.whisper_engine import WhisperEngine
 from internal.audio.diarization.pyannote_engine import PyAnnoteEngine
@@ -118,3 +119,48 @@ async def test_transcribe_audio_window_activity_end_to_end() -> None:
     assert call_args["tenant_id"] == "tenant-e2e"
     assert call_args["audio_id"] == "audio-e2e"
     assert len(call_args["segments_generator"]) == output.segment_count
+
+
+class NoOpS3Client(S3ClientProtocol):
+    """Mock S3 client that leaves destination path empty (no file created)."""
+
+    async def fetch_slice(self, bucket: str, key: str, destination_path: str) -> str:
+        _ = (bucket, key, destination_path)
+        return destination_path
+
+    async def write_parquet_table(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        metadata: dict[str, str] | None = None,
+    ) -> str:
+        _ = (data, metadata)
+        return f"s3://{bucket}/{key}"
+
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_window_missing_file_retryable() -> None:
+    """Verify missing audio file raises a retryable ApplicationError."""
+    activity = TranscribeAudioWindowActivity(
+        s3_client=NoOpS3Client(),
+        whisper_engine=WhisperEngine(use_native=False),
+        pyannote_engine=PyAnnoteEngine(use_native=False),
+        chunk_client=DummyChunkClient(),
+    )
+
+    input_data = TranscribeAudioWindowInput(
+        tenant_id="tenant-missing",
+        audio_id="audio-missing",
+        audio_hash="hash-missing",
+        s3_bucket="my-audio-bucket",
+        s3_key="audio/missing_audio.wav",
+        start_offset_seconds=0.0,
+        window_duration_seconds=60.0,
+    )
+
+    with pytest.raises(ApplicationError) as exc_info:
+        await activity.run(input_data)
+
+    assert exc_info.value.type == "FILE_NOT_FOUND"
+    assert exc_info.value.non_retryable is False

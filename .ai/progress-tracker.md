@@ -103,3 +103,13 @@
   - `.github/workflows/docker-publish.yml`: Multi-image matrix build and publish for `doc-ai-vision-worker` and `doc-ai-audio-worker` to GitHub Container Registry (`ghcr.io`) with Docker Buildx and GitHub Actions layer caching.
   - `Makefile`: Standardized automation entry points (`make lint`, `make format`, `make typecheck`, `make test`, `make proto`, `make check`).
   - `api/proto/v1/`: Implemented Protobuf v3 contracts (`common.proto` and `document_ai.proto`) for normalized bounding boxes and gRPC streaming to `rag-chunk-lifecycle-service`.
+- **Code Review Hardening (Audio Pipeline & Resumption Lifecycle)**:
+  - `internal/audio/alignment.py`: Simplified word timestamp calculation to project directly from `start_offset_seconds` and `w.start_time`/`w.end_time`, eliminating double-offset adjustments.
+  - `internal/audio/asr/whisper_engine.py` & `internal/audio/diarization/pyannote_engine.py`: Updated native transcription, diarization, and model-loading error handling to re-raise errors when `use_native=True`, restricting simulated mode to `use_native=False`.
+  - `internal/temporal/activities/audio_activity.py`:
+    - Replaced shared scratch path with unique `tempfile.mkstemp` and guaranteed cleanup in a `finally` block.
+    - Removed mock WAV payload fabrication in activity runtime; missing audio files now raise retryable `ApplicationError("FILE_NOT_FOUND")`.
+    - Enforced cooperative cancellation: raises `ApplicationError`/`asyncio.CancelledError` when `stop_event` is set rather than returning partial success.
+    - Enhanced checkpoint resumption: persisted processed segments in `AudioHeartbeatDetails` and replayed on resume so retries deliver full transcripts without loss.
+  - `internal/transport/grpc/chunk_client.py`: Verified exception propagation in `stream_audio_transcript` (already raising errors on RPC/stream failure).
+  - Synchronized `.ai/doc-api.md` with updated `AudioHeartbeatDetails` schema.

@@ -14,6 +14,7 @@ from internal.temporal.activities.audio_activity import (
     TranscribeAudioWindowInput,
 )
 from internal.transport.grpc.chunk_client import ChunkServiceClient
+from test.integration.test_audio_pipeline_integration import DummyS3Client
 
 
 class MockQuarantineS3Client(S3ClientProtocol):
@@ -48,6 +49,7 @@ class MockQuarantineS3Client(S3ClientProtocol):
 async def test_audio_checkpoint_resumption_delta_accounting() -> None:
     """Verify activity resumes from mid-window offset and accounts metrics with delta."""
     activity = TranscribeAudioWindowActivity(
+        s3_client=DummyS3Client(),
         whisper_engine=WhisperEngine(use_native=False),
         pyannote_engine=PyAnnoteEngine(use_native=False),
         chunk_client=ChunkServiceClient(target_endpoint="mock"),
@@ -90,6 +92,8 @@ async def test_audio_corrupt_zero_byte_quarantine() -> None:
     """Verify physical zero-byte audio payload triggers CORRUPT_INPUT_QUARANTINE."""
     activity = TranscribeAudioWindowActivity(
         s3_client=MockQuarantineS3Client(mode="zero_byte"),
+        whisper_engine=WhisperEngine(use_native=False),
+        pyannote_engine=PyAnnoteEngine(use_native=False),
     )
 
     input_data = TranscribeAudioWindowInput(
@@ -114,6 +118,8 @@ async def test_audio_corrupt_header_quarantine() -> None:
     """Verify physical corrupt header payload triggers CORRUPT_INPUT_QUARANTINE."""
     activity = TranscribeAudioWindowActivity(
         s3_client=MockQuarantineS3Client(mode="corrupt_header"),
+        whisper_engine=WhisperEngine(use_native=False),
+        pyannote_engine=PyAnnoteEngine(use_native=False),
     )
 
     input_data = TranscribeAudioWindowInput(

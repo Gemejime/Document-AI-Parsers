@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from temporalio.exceptions import ApplicationError
 
+from internal.audio.asr.whisper_engine import WhisperEngine
+from internal.audio.diarization.pyannote_engine import PyAnnoteEngine
 from internal.temporal.activities.audio_activity import (
     TranscribeAudioWindowActivity,
     TranscribeAudioWindowInput,
@@ -14,6 +16,7 @@ from internal.temporal.activities.vision_activity import (
     ParseDocumentSliceInput,
 )
 from internal.transport.grpc.chunk_client import ChunkServiceClient
+from test.integration.test_audio_pipeline_integration import DummyS3Client
 
 
 @pytest.mark.asyncio
@@ -40,7 +43,10 @@ async def test_vision_activity_corrupt_input_quarantine() -> None:
 @pytest.mark.asyncio
 async def test_audio_activity_corrupt_input_quarantine() -> None:
     """Verify that corrupt audio inputs fail-fast with non-retryable quarantine ApplicationError."""
-    activity = TranscribeAudioWindowActivity()
+    activity = TranscribeAudioWindowActivity(
+        whisper_engine=WhisperEngine(use_native=False),
+        pyannote_engine=PyAnnoteEngine(use_native=False),
+    )
     corrupt_input = TranscribeAudioWindowInput(
         tenant_id="tenant-123",
         audio_id="audio-corrupt",
@@ -100,7 +106,10 @@ async def test_vision_activity_checkpoint_resumption() -> None:
 async def test_audio_activity_checkpoint_resumption() -> None:
     """Verify audio activity resumes from committed offset checkpoint."""
     activity = TranscribeAudioWindowActivity(
-        chunk_client=ChunkServiceClient(target_endpoint="mock")
+        s3_client=DummyS3Client(),
+        chunk_client=ChunkServiceClient(target_endpoint="mock"),
+        whisper_engine=WhisperEngine(use_native=False),
+        pyannote_engine=PyAnnoteEngine(use_native=False),
     )
     input_data = TranscribeAudioWindowInput(
         tenant_id="tenant-456",

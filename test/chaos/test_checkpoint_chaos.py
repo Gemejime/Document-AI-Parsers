@@ -20,6 +20,7 @@ from internal.vision.layout.docling_engine import DoclingEngine
 from internal.vision.ocr.fallback_ocr import FallbackOCREngine
 from internal.vision.table.parquet_s3_writer import ParquetS3Writer
 from internal.vision.table.table_extractor import TableData
+from test.integration.test_audio_pipeline_integration import DummyS3Client
 
 
 @pytest.mark.asyncio
@@ -96,6 +97,7 @@ async def test_audio_sigkill_chaos_recovery_at_offset_45() -> None:
     mock_grpc.stream_audio_transcript.return_value = True
 
     activity = TranscribeAudioWindowActivity(
+        s3_client=DummyS3Client(),
         whisper_engine=WhisperEngine(use_native=False),
         pyannote_engine=PyAnnoteEngine(use_native=False),
         chunk_client=mock_grpc,
