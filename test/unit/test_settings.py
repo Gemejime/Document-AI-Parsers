@@ -105,3 +105,28 @@ def test_configure_logging_idempotence() -> None:
 
     prod_cfg = WorkerSettings(ENVIRONMENT="production")
     configure_logging(prod_cfg)
+
+
+def test_worker_settings_validation_constraints() -> None:
+    """Verify validation bounds on OCR_CONFIDENCE_THRESHOLD and TABLE_PARQUET_COMPRESSION."""
+    import pytest
+    from pydantic import ValidationError
+
+    # Valid bounds
+    valid_cfg = WorkerSettings(
+        OCR_CONFIDENCE_THRESHOLD=0.5,
+        TABLE_PARQUET_COMPRESSION="zstd",
+    )
+    assert valid_cfg.OCR_CONFIDENCE_THRESHOLD == 0.5
+    assert valid_cfg.TABLE_PARQUET_COMPRESSION == "zstd"
+
+    # Out-of-bounds confidence threshold
+    with pytest.raises(ValidationError):
+        WorkerSettings(OCR_CONFIDENCE_THRESHOLD=-0.1)
+
+    with pytest.raises(ValidationError):
+        WorkerSettings(OCR_CONFIDENCE_THRESHOLD=1.5)
+
+    # Invalid parquet compression codec
+    with pytest.raises(ValidationError):
+        WorkerSettings.model_validate({"TABLE_PARQUET_COMPRESSION": "invalid_codec"})

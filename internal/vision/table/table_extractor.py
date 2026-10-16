@@ -86,7 +86,12 @@ class TableData:
 
         # Infer column types and construct pyarrow arrays
         columns: dict[str, pa.Array] = {}
-        for col_idx, col_name in enumerate(effective_headers):
+        seen_names: set[str] = set()
+        for col_idx, raw_col_name in enumerate(effective_headers):
+            col_name = raw_col_name
+            if col_name in seen_names:
+                col_name = f"{raw_col_name}_{col_idx}"
+            seen_names.add(col_name)
             col_values = [row[col_idx] for row in normalized_rows]
             columns[col_name] = _infer_and_build_array(col_values)
 

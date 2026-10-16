@@ -159,38 +159,38 @@ class ParseDocumentSliceActivity:
                     error=str(exc),
                 )
 
-        # 3. Stage local PDF file path
-        local_scratch_dir = tempfile.gettempdir()
-        local_pdf_path = os.path.join(
-            local_scratch_dir,
-            f"{input_data.doc_hash}_{input_data.start_page}.pdf",
-        )
-
-        await self.s3_client.fetch_slice(
-            bucket=input_data.s3_bucket,
-            key=input_data.s3_key,
-            destination_path=local_pdf_path,
-        )
-
-        # 4. Offload compute to worker thread with HeartbeatRunner
-        tracker = ProgressTracker()
-        runner = HeartbeatRunner(
-            activity_name="ParseDocumentSliceActivity",
-            interval_seconds=10.0,
-            progress_tracker=tracker,
-        )
-
-        async with runner:
-            page_results = await asyncio.to_thread(
-                _execute_vision_pipeline_thread,
-                local_pdf_path,
-                start_from_page,
-                input_data.page_count,
-                tracker,
-                runner.stop_event,
-                self.docling_engine,
-                self.ocr_engine,
+        # 3. Stage local PDF file path in unique temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_pdf_path = os.path.join(
+                temp_dir,
+                f"{input_data.doc_hash}_{input_data.start_page}.pdf",
             )
+
+            await self.s3_client.fetch_slice(
+                bucket=input_data.s3_bucket,
+                key=input_data.s3_key,
+                destination_path=local_pdf_path,
+            )
+
+            # 4. Offload compute to worker thread with HeartbeatRunner
+            tracker = ProgressTracker()
+            runner = HeartbeatRunner(
+                activity_name="ParseDocumentSliceActivity",
+                interval_seconds=10.0,
+                progress_tracker=tracker,
+            )
+
+            async with runner:
+                page_results = await asyncio.to_thread(
+                    _execute_vision_pipeline_thread,
+                    local_pdf_path,
+                    start_from_page,
+                    input_data.page_count,
+                    tracker,
+                    runner.stop_event,
+                    self.docling_engine,
+                    self.ocr_engine,
+                )
 
         # 5. Extract tables and upload Parquet datasets directly to S3
         total_tables = 0

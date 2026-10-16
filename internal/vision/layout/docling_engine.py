@@ -212,6 +212,14 @@ class DoclingEngine:
         conv_result = self._converter.convert(pdf_path)
         doc = conv_result.document
 
+        # Pre-group docling items by page number
+        items_by_page: dict[int, list[Any]] = {}
+        if hasattr(doc, "iterate_items"):
+            for item, _level in doc.iterate_items():
+                prov = getattr(item, "prov", None)
+                item_page = prov[0].page_no if prov and len(prov) > 0 else 1
+                items_by_page.setdefault(item_page, []).append(item)
+
         # Iterate over pages in docling document
         page_count = len(doc.pages) if hasattr(doc, "pages") else (total_pages or 1)
         for page_idx in range(page_count):
@@ -225,59 +233,50 @@ class DoclingEngine:
             nodes: list[ParsedASTNode] = []
 
             # Extract body elements for this page
-            if hasattr(doc, "iterate_items"):
-                for item, _level in doc.iterate_items():
-                    prov = getattr(item, "prov", None)
-                    item_page = prov[0].page_no if prov and len(prov) > 0 else 1
-                    if item_page != page_num:
-                        continue
+            for item in items_by_page.get(page_num, []):
+                node_type = "paragraph"
+                label = getattr(item, "label", "").lower()
+                text = getattr(item, "text", "")
 
-                    node_type = "paragraph"
-                    label = getattr(item, "label", "").lower()
-                    text = getattr(item, "text", "")
+                if "heading" in label or "title" in label:
+                    node_type = "heading_h1"
+                    if not text.startswith("#"):
+                        text = f"# {text}"
+                elif "table" in label:
+                    node_type = "table"
+                elif "list" in label:
+                    node_type = "list"
 
-                    if "heading" in label or "title" in label:
-                        node_type = "heading_h1"
-                        if not text.startswith("#"):
-                            text = f"# {text}"
-                    elif "table" in label:
-                        node_type = "table"
-                    elif "list" in label:
-                        node_type = "list"
-
-                    # Normalize bounding box
-                    box = getattr(prov[0], "bbox", None) if prov and len(prov) > 0 else None
-                    if box:
-                        norm_bbox = normalize_bbox(
-                            x1=float(box.l),
-                            y1=float(box.t),
-                            x2=float(box.r),
-                            y2=float(box.b),
-                            page_width=float(getattr(box, "coord_origin_width", 612.0)),
-                            page_height=float(getattr(box, "coord_origin_height", 792.0)),
-                            origin="bottom-left"
-                            if getattr(box, "coord_origin", "BOTTOMLEFT") == "BOTTOMLEFT"
-                            else "top-left",
-                            page_number=page_num,
-                        )
-                    else:
-                        norm_bbox = normalize_bbox(0, 0, 100, 100, 100, 100, page_number=page_num)
-
-                    nodes.append(
-                        ParsedASTNode(
-                            node_id=str(uuid.uuid4()),
-                            node_type=node_type,
-                            text_content=text,
-                            bounding_box=norm_bbox,
-                            confidence=0.90,
-                        )
+                # Normalize bounding box
+                prov = getattr(item, "prov", None)
+                box = getattr(prov[0], "bbox", None) if prov and len(prov) > 0 else None
+                if box:
+                    norm_bbox = normalize_bbox(
+                        x1=float(box.l),
+                        y1=float(box.t),
+                        x2=float(box.r),
+                        y2=float(box.b),
+                        page_width=float(getattr(box, "coord_origin_width", 612.0)),
+                        page_height=float(getattr(box, "coord_origin_height", 792.0)),
+                        origin="bottom-left"
+                        if getattr(box, "coord_origin", "BOTTOMLEFT") == "BOTTOMLEFT"
+                        else "top-left",
+                        page_number=page_num,
                     )
+                else:
+                    norm_bbox = normalize_bbox(0, 0, 100, 100, 100, 100, page_number=page_num)
 
-            if not nodes:
-                # If page had no elements, fallback to simulated page
-                res = self._generate_simulated_page(page_num, 612.0, 792.0)
-            else:
-                res = PageLayoutResult(page_number=page_num, nodes=nodes)
+                nodes.append(
+                    ParsedASTNode(
+                        node_id=str(uuid.uuid4()),
+                        node_type=node_type,
+                        text_content=text,
+                        bounding_box=norm_bbox,
+                        confidence=0.90,
+                    )
+                )
+
+            res = PageLayoutResult(page_number=page_num, nodes=nodes)
 
             if on_page_complete is not None:
                 on_page_complete(res)

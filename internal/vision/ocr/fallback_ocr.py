@@ -89,6 +89,10 @@ class FallbackOCREngine:
             except Exception as exc:
                 logger.warning("paddleocr_inference_error_using_mock", error=str(exc))
 
+        # If in native mode and no OCR pass ran or OCR failed, return original node unchanged
+        if self.use_native:
+            return node
+
         # Deterministic enhancement for fallback / CI test execution
         enhanced_text = (
             node.text_content if node.text_content.strip() else "[OCR Recovered Text Content]"

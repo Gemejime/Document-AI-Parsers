@@ -207,22 +207,21 @@ class ChunkServiceClient:
                     return True
                 return False
         except grpc.RpcError as rpc_err:
-            logger.warning(
-                "grpc_endpoint_unreachable_recording_mock_ack",
+            logger.error(
+                "grpc_endpoint_rpc_error",
                 target=self.target_endpoint,
                 code=rpc_err.code().name if hasattr(rpc_err, "code") else "UNKNOWN",
                 chunks_buffered=chunk_count,
             )
-            # Resilient fallback mode for testing/offline environments
-            return True
+            raise
         except Exception as exc:
-            logger.warning(
-                "grpc_streaming_fallback_mode_invoked",
+            logger.error(
+                "grpc_streaming_error",
                 target=self.target_endpoint,
                 error=str(exc),
                 chunks_buffered=chunk_count,
             )
-            return True
+            raise
 
     async def stream_audio_transcript(
         self,
@@ -299,18 +298,18 @@ class ChunkServiceClient:
                     return True
                 return False
         except grpc.RpcError as rpc_err:
-            logger.warning(
-                "grpc_audio_endpoint_unreachable_recording_mock_ack",
+            logger.error(
+                "grpc_audio_endpoint_rpc_error",
                 target=self.target_endpoint,
                 code=rpc_err.code().name if hasattr(rpc_err, "code") else "UNKNOWN",
                 chunks_buffered=chunk_count,
             )
-            return True
+            raise
         except Exception as exc:
-            logger.warning(
-                "grpc_audio_streaming_fallback_mode_invoked",
+            logger.error(
+                "grpc_audio_streaming_error",
                 target=self.target_endpoint,
                 error=str(exc),
                 chunks_buffered=chunk_count,
             )
-            return True
+            raise

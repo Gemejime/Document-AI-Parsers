@@ -66,3 +66,22 @@ def test_table_data_pyarrow_conversion() -> None:
     assert pa.types.is_float64(schema.field("FloatCol").type)
     assert pa.types.is_boolean(schema.field("BoolCol").type)
     assert pa.types.is_string(schema.field("StrCol").type)
+
+
+def test_table_data_pyarrow_duplicate_headers() -> None:
+    """Verify that duplicate header names receive unique suffix and preserve all column values."""
+    headers = ["Score", "Score", "Score"]
+    rows = [
+        [10, 20, 30],
+        [40, 50, 60],
+    ]
+    bbox = normalize_bbox(0, 0, 100, 100, 100, 100)
+    table_data = TableData(headers=headers, rows=rows, bbox=bbox, page_number=1)
+
+    pa_table = table_data.to_pyarrow_table()
+
+    assert pa_table.num_columns == 3
+    assert pa_table.column_names == ["Score", "Score_1", "Score_2"]
+    assert pa_table.column("Score").to_pylist() == [10, 40]
+    assert pa_table.column("Score_1").to_pylist() == [20, 50]
+    assert pa_table.column("Score_2").to_pylist() == [30, 60]

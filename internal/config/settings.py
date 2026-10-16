@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from collections.abc import MutableMapping
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import structlog
 from pydantic import Field
@@ -85,8 +85,10 @@ class WorkerSettings(BaseSettings):
     OCR_CONFIDENCE_THRESHOLD: float = Field(
         default=0.80,
         description="Confidence threshold triggering secondary OCR pass",
+        ge=0.0,
+        le=1.0,
     )
-    TABLE_PARQUET_COMPRESSION: str = Field(
+    TABLE_PARQUET_COMPRESSION: Literal["snappy", "zstd", "gzip"] = Field(
         default="snappy",
         description="Compression codec for PyArrow Parquet tables (snappy, zstd, gzip)",
     )
