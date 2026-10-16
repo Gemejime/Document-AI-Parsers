@@ -2,6 +2,7 @@
 replicaCount: 1
 
 workerComponent: "worker"
+taskQueue: "doc-ai-queue"
 
 image:
   repository: rag-document-ai-worker
@@ -94,7 +95,7 @@ volumeMounts:
 
 persistence:
   enabled: true
-  existingClaim: false
+  existingClaim: true
   name: doc-ai-model-weights-nvme-pvc
   accessModes:
     - ReadOnlyMany

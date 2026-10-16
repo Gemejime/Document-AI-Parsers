@@ -2,6 +2,7 @@
 replicaCount: 1
 
 workerComponent: "audio-worker"
+taskQueue: "doc-ai-audio-queue"
 
 image:
   repository: rag-document-ai-audio-worker

@@ -24,9 +24,13 @@ spec:
                 - worker: vision
                   valuesFile: values-vision.yaml
                   appName: doc-ai-vision-worker
+                  targetNamespace: doc-ai-vision
+                  pvcName: doc-ai-vision-model-weights-pvc
                 - worker: audio
                   valuesFile: values-audio.yaml
                   appName: doc-ai-audio-worker
+                  targetNamespace: doc-ai-audio
+                  pvcName: doc-ai-audio-model-weights-pvc
   template:
     metadata:
       name: "{{appName}}-{{env}}"
@@ -47,9 +51,12 @@ spec:
           valueFiles:
             - values.yaml
             - "{{valuesFile}}"
+          parameters:
+            - name: persistence.name
+              value: "{{pvcName}}"
       destination:
         server: "{{cluster}}"
-        namespace: "{{namespace}}"
+        namespace: "{{targetNamespace}}-{{env}}"
       syncPolicy:
         automated:
           prune: true

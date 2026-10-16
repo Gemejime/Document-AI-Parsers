@@ -2,6 +2,7 @@
 replicaCount: 2
 
 workerComponent: "vision-worker"
+taskQueue: "doc-ai-vision-queue"
 
 image:
   repository: rag-document-ai-vision-worker

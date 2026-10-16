@@ -14,7 +14,7 @@ spec:
     - name: {{ include "rag-document-ai-worker.fullname" . }}-alerts
       rules:
         - alert: QueueBacklogGrowth
-          expr: max_over_time(temporal_activity_schedule_to_start_seconds[3m]) > 45
+          expr: max_over_time(temporal_activity_schedule_to_start_seconds{task_queue="{{ .Values.taskQueue | default "doc-ai-queue" }}"}[3m]) > 45
           for: 3m
           labels:
             severity: warning

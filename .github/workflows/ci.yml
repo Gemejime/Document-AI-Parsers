@@ -145,7 +145,12 @@ jobs:
 
       - name: Lint Helm Values YAML Files
         run: |
-          yamllint -d "{extends: relaxed, rules: {line-length: disable, octal-values: disable}}" deployments/helm/
+          yamllint -c .yamllint.yaml deployments/helm/
+
+      - name: Lint Rendered Helm Manifests
+        run: |
+          helm template test-vision deployments/helm -f deployments/helm/values-vision.yaml | yamllint -d "{extends: relaxed, rules: {line-length: disable, octal-values: disable}}" -
+          helm template test-audio deployments/helm -f deployments/helm/values-audio.yaml | yamllint -d "{extends: relaxed, rules: {line-length: disable, octal-values: disable}}" -
 
   secret-scan:
     name: Secured Credential & Secret Audit
