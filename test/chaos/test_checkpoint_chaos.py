@@ -125,14 +125,31 @@ async def test_audio_sigkill_chaos_recovery_at_offset_45() -> None:
     mock_activity_info = MagicMock()
     mock_activity_info.heartbeat_details = mock_checkpoint
 
+    metric_before = activity.metrics.audio_seconds_processed_total.labels(
+        worker_type="audio"
+    )._value.get()
+
     with (
         patch("temporalio.activity.in_activity", return_value=True),
         patch("temporalio.activity.info", return_value=mock_activity_info),
     ):
         output = await activity.run(input_payload)
 
+    metric_after = activity.metrics.audio_seconds_processed_total.labels(
+        worker_type="audio"
+    )._value.get()
+    metric_delta = metric_after - metric_before
+
+    # Verify activity completed and only unprocessed delta (75.0s) was added to telemetry
     assert output.audio_seconds_processed == 120.0
+    assert metric_delta == 75.0
     assert output.ast_streamed is True
+
+    # Assert that all resumed segments streamed start at or after the 45s checkpoint offset
+    call_kwargs = mock_grpc.stream_audio_transcript.call_args.kwargs
+    streamed_segments = call_kwargs["segments_generator"]
+    assert len(streamed_segments) > 0
+    assert all(seg.start_time_seconds >= 45.0 for seg in streamed_segments)
 
 
 @pytest.mark.asyncio

@@ -50,7 +50,7 @@ def test_ci_regression_heap_memory_stability() -> None:
     drift_ratio = drift_bytes / max(peak, 1)
     object_delta = abs(final_objects - initial_objects)
 
-    assert drift_ratio < 0.05 or drift_bytes < 512 * 1024, (
+    assert drift_ratio < 0.01 or drift_bytes < 512 * 1024, (
         f"Host heap drifted by {drift_bytes} bytes ({drift_ratio:.2%}) over {cycles} cycles"
     )
     assert object_delta < 200, f"Uncollected Python objects drifted by {object_delta}"

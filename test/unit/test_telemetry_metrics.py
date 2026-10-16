@@ -1,6 +1,7 @@
 """Unit test verifying Prometheus telemetry registry, metrics collection, and alerting expressions."""
 
-from typing import Any
+import re
+from pathlib import Path
 
 import prometheus_client
 from fastapi.testclient import TestClient
@@ -56,37 +57,43 @@ def test_required_telemetry_metrics_registered() -> None:
 
 
 def test_prometheus_alert_expressions_reference_valid_metrics() -> None:
-    """Verify Prometheus alerting expressions parse and reference valid registered metric names."""
-    alert_rules: list[dict[str, Any]] = [
-        {
-            "name": "QueueBacklogGrowth",
-            "expr": "max_over_time(temporal_activity_schedule_to_start_seconds[3m]) > 45",
-            "expected_metric": "temporal_activity_schedule_to_start_seconds",
-        },
-        {
-            "name": "CudaOOMErrors",
-            "expr": "sum by (worker_type, instance) (rate(doc_ai_cuda_oom_errors_total[5m])) > 0",
-            "expected_metric": "doc_ai_cuda_oom_errors_total",
-        },
-        {
-            "name": "ActivityFailuresHigh",
-            "expr": (
-                "(sum by (activity_name) (rate(doc_ai_activity_failures_total[10m])) / "
-                "sum by (activity_name) (rate(doc_ai_task_duration_seconds_count[10m]))) > 0.02"
-            ),
-            "expected_metrics": [
-                "doc_ai_activity_failures_total",
-                "doc_ai_task_duration_seconds_count",
-            ],
-        },
-    ]
+    """Verify Prometheus alerting expressions in templates/prometheusrule.yaml reference registered metrics."""
+    rule_file = (
+        Path(__file__).resolve().parents[2]
+        / "deployments"
+        / "helm"
+        / "templates"
+        / "prometheusrule.yaml"
+    )
+    assert rule_file.is_file(), f"PrometheusRule template not found at {rule_file}"
 
-    for rule in alert_rules:
-        if "expected_metric" in rule:
-            assert rule["expected_metric"] in rule["expr"]
-        if "expected_metrics" in rule:
-            for em in rule["expected_metrics"]:
-                assert em in rule["expr"]
+    content = rule_file.read_text(encoding="utf-8")
+    rule_matches = re.findall(
+        r"-\s*alert:\s*([A-Za-z0-9_-]+)\s+expr:\s*(.*?)(?=\n\s*(?:for|labels|annotations):)",
+        content,
+        re.DOTALL,
+    )
+    alert_rules = {name.strip(): " ".join(expr.split()) for name, expr in rule_matches}
+
+    expected_validations: dict[str, list[str]] = {
+        "QueueBacklogGrowth": ["temporal_activity_schedule_to_start_seconds"],
+        "CudaOOMErrors": ["doc_ai_cuda_oom_errors_total"],
+        "ActivityFailuresHigh": [
+            "doc_ai_activity_failures_total",
+            "doc_ai_task_duration_seconds_count",
+        ],
+    }
+
+    assert set(expected_validations.keys()).issubset(alert_rules.keys()), (
+        f"Missing alert rules in template: {set(expected_validations.keys()) - set(alert_rules.keys())}"
+    )
+
+    for alert_name, expected_metrics in expected_validations.items():
+        expr = alert_rules[alert_name]
+        for metric in expected_metrics:
+            assert metric in expr, (
+                f"Alert '{alert_name}' expression '{expr}' does not reference metric '{metric}'"
+            )
 
 
 def test_metrics_endpoint_integration() -> None:

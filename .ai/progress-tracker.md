@@ -10,6 +10,28 @@
 
 ## Completed
 
+- **Code Review Findings Remediation & Hardening**:
+  - **Least Privilege Workflow Permissions & Reliable GitOps Push** (`.github/workflows/docker-publish.yml`):
+    - Lowered default workflow permissions to `contents: read`.
+    - Assigned `packages: write` strictly to the `publish` job and `contents: write` strictly to the `sync-gitops-helm` job.
+    - Removed `|| echo` fallback from `git push origin HEAD:main` to prevent silent delivery failures.
+    - Hardened `sed` regex pattern (`/^image:/,/^[a-zA-Z]/ s/^([[:space:]]+)tag:[[:space:]].*/\1tag: .../`) to preserve indentation and match only the intended `tag:` key under `image:`.
+  - **GitOps Resource Contention Prevention** (`deployments/argocd/applicationset.yaml`):
+    - Configured distinct target namespaces and explicit PVC names for ApplicationSet generated applications, eliminating resource collision with standalone applications targeting `doc-ai`.
+  - **Helm Manifest Linting & Raw Template Exclusion** (`.yamllint.yaml`, `.github/workflows/ci.yml`):
+    - Added root `.yamllint.yaml` with raw template exclusions (`deployments/helm/templates/`).
+    - Updated `helm-lint` CI step to lint raw Helm values and rendered Helm templates (`helm template | yamllint`).
+  - **Helm Chart Parameterization & Template Precision** (`deployments/helm/`):
+    - Filtered `QueueBacklogGrowth` alert expression by release `task_queue` (`temporal_activity_schedule_to_start_seconds{task_queue="..."}`).
+    - Exposed `taskQueue` key in `values.yaml`, `values-vision.yaml`, and `values-audio.yaml`.
+    - Prefixed PVC claim name with release fullname to prevent claim collisions between releases in the same namespace.
+    - Rendered `.Values.serviceAccount.automountServiceAccountToken` directly without `default true` filter to honor explicit `false`.
+    - Updated default `persistence.existingClaim: true` in `values.yaml` to prevent invalid `ReadOnlyMany` empty volume provisioning on shared NVMe storage.
+  - **Test Suite Precision & Chart Validation Alignment** (`test/`):
+    - Aligned VRAM soak test drift threshold to $< 1\%$ (`drift_ratio < 0.01`) in `test/performance/test_vram_soak.py`.
+    - Enhanced checkpoint chaos assertion in `test/chaos/test_checkpoint_chaos.py` to assert delta telemetry increment ($75.0$s) and verify that all resumed audio segments start at or after the $45$s offset.
+    - Updated `test/unit/test_telemetry_metrics.py` to dynamically parse alert expressions from `deployments/helm/templates/prometheusrule.yaml` and validate registered metrics against active Helm rules to catch chart-test drift.
+
 - **Phase 4: Chaos Testing, KEDA Scaling & GitOps ArgoCD Integration (Completed)**:
   - **Production Helm 3 Chart Suite** (`deployments/helm/`):
     - `Chart.yaml`: Helm 3 specification for `rag-document-ai-worker` (`v0.1.0`).
