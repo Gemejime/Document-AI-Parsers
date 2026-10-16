@@ -13,6 +13,7 @@ from internal.temporal.activities.vision_activity import (
     ParseDocumentSliceActivity,
     ParseDocumentSliceInput,
 )
+from internal.transport.grpc.chunk_client import ChunkServiceClient
 
 
 @pytest.mark.asyncio
@@ -60,7 +61,7 @@ async def test_audio_activity_corrupt_input_quarantine() -> None:
 @pytest.mark.asyncio
 async def test_vision_activity_checkpoint_resumption() -> None:
     """Verify activity resumes from committed checkpoint (e.g., killed at page 52, resumes at 51)."""
-    activity = ParseDocumentSliceActivity()
+    activity = ParseDocumentSliceActivity(chunk_client=ChunkServiceClient(target_endpoint="mock"))
     input_data = ParseDocumentSliceInput(
         tenant_id="tenant-456",
         document_id="doc-resume",
@@ -98,7 +99,9 @@ async def test_vision_activity_checkpoint_resumption() -> None:
 @pytest.mark.asyncio
 async def test_audio_activity_checkpoint_resumption() -> None:
     """Verify audio activity resumes from committed offset checkpoint."""
-    activity = TranscribeAudioWindowActivity()
+    activity = TranscribeAudioWindowActivity(
+        chunk_client=ChunkServiceClient(target_endpoint="mock")
+    )
     input_data = TranscribeAudioWindowInput(
         tenant_id="tenant-456",
         audio_id="audio-resume",

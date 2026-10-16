@@ -277,7 +277,7 @@ message BoundingBox {
 ### B. Fallback OCR Engine (`internal.vision.ocr.fallback_ocr`)
 - **`FallbackOCREngine`**:
   - Secondary OCR pass integrating PaddleOCR for multilingual/scanned regions.
-  - Triggers when node confidence < `settings.OCR_CONFIDENCE_THRESHOLD` (default `0.80`) or when scanned visual blocks contain empty text streams.
+  - Triggers when node confidence < `settings.OCR_CONFIDENCE_THRESHOLD` (default `0.80`, bounded `[0.0, 1.0]`) or when scanned visual blocks contain empty text streams.
   - Updates text content and enhances confidence scores while preserving reading order and normalized bounding boxes.
 
 ### C. Tabular Dataset Extraction & PyArrow Parquet (`internal.vision.table`)
@@ -288,9 +288,9 @@ message BoundingBox {
     canonical_repr = json.dumps({"headers": headers, "rows": rows}, sort_keys=True)
     table_hash = hashlib.sha256(canonical_repr.encode("utf-8")).hexdigest()
     ```
-  - `to_pyarrow_table() -> pyarrow.Table`: Columnar PyArrow Table with strongly-typed columns (inferred boolean, int64, float64, string).
+  - `to_pyarrow_table() -> pyarrow.Table`: Columnar PyArrow Table with strongly-typed columns (inferred boolean, int64, float64, string) and unique `_{i}` suffixes for repeated headers.
 - **`ParquetS3Writer` (`internal.vision.table.parquet_s3_writer`)**:
-  - Serializes `TableData` to Parquet bytes using Snappy compression (`compression="snappy"`).
+  - Serializes `TableData` to Parquet bytes using configurable compression through the `compression` argument or `settings.TABLE_PARQUET_COMPRESSION` (default `snappy`, supported codecs: `snappy`, `zstd`, `gzip`).
   - Persists directly to S3 under content-addressed path:
     `s3://<bucket>/artifacts/<tenant_id>/<doc_hash>/tables/<table_hash>.parquet`
   - Injects mandatory S3 object metadata headers:
@@ -299,6 +299,8 @@ message BoundingBox {
     - `x-amz-meta-table-hash`: `<table_hash>`
     - `x-amz-meta-page-number`: `<page_number>`
     - `Content-Type`: `application/vnd.apache.parquet`
+- **Tabular Settings Configuration**:
+  - `settings.TABLE_PARQUET_COMPRESSION`: Compression codec for PyArrow Parquet tables (default: `snappy`, supported codecs: `snappy`, `zstd`, `gzip`). Documented alongside `settings.OCR_CONFIDENCE_THRESHOLD` to govern downstream tabular artifact persistence.
 
 ### D. Memory & VRAM Protocol (`internal.vision.memory`)
 - `cleanup_vram_and_memory()`:

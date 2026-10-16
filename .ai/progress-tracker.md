@@ -70,22 +70,15 @@
   - **Containerization & Helm Deployments** (`deployments/docker/Dockerfile.vision`, `Dockerfile.audio`, `deployments/helm/values-vision.yaml`, `values-audio.yaml`): Multi-stage CUDA 12.2 images with `libjemalloc2`, model cache env vars, non-root UID 1000, read-only rootfs, 2 GiB `/dev/shm`, and KEDA `ScaledObject` queue depth triggers.
   - **Comprehensive Verification Suite** (`test/unit/`, `test/integration/`): 24 unit and integration tests passing covering coordinate math, settings redaction, probe endpoints, GIL thread isolation, and Temporal checkpoint resumption.
 
+- **Phase 2: Vision & Tabular Pipeline (Completed)**:
+  - **Docling Layout Parser & Engine Adapter** (`internal/vision/layout/docling_engine.py`): Structured AST node decomposition (`heading_h1`..`h6`, `paragraph`, `table`, `list`), bounding boxes normalized to $[0.0, 1.0]$, mid-slice recovery skipping pages $< \text{start\_from\_page}$, single-pass item grouping by page, and cooperative cancellation.
+  - **Secondary Fallback OCR Pass** (`internal/vision/ocr/fallback_ocr.py`): Multilingual fallback with PaddleOCR triggered when node confidence $< \text{settings.OCR\_CONFIDENCE\_THRESHOLD}$ (bounded to $[0.0, 1.0]$), preserving unmodified nodes when OCR pass does not run.
+  - **Tabular Dataset Extraction & PyArrow Parquet S3 Writer** (`internal/vision/table/`): `TableData` formatting GFM Markdown, canonical SHA-256 table hash calculation, PyArrow Table conversion with duplicate column name deduplication (`_{i}`), and `ParquetS3Writer` persisting directly to S3 with configurable codecs (`settings.TABLE_PARQUET_COMPRESSION`).
+  - **Streaming gRPC AST Manifest Egress** (`internal/transport/grpc/chunk_client.py`): StreamDocumentAST client streaming chunks to `rag-chunk-lifecycle-service` with error propagation for Temporal activity retries.
+
 ## In Progress
 
-- Phase 2: Vision & Tabular Pipeline Preparation & Implementation.
-
-## Completed (Phase 2 Prep & Pressure Testing)
-
-- **Comprehensive Architectural Pressure Testing**:
-  - Pressure tested `prompts/phase-2-vision-tabular-pipeline.md` against all five architectural specifications in `tasks/`, specifically `tasks/RAG Document AI Worker Implementation Plan.pdf`.
-  - Hardened specifications for Table-Transformer boundary detection, canonical SHA-256 table hash calculation, PaddleOCR fallback integration, VRAM cache flushing hooks (`torch.cuda.empty_cache()` + `gc.collect()`), heading hierarchy tagging (`heading_h1` .. `heading_h6` + markdown `#`), and client-streaming gRPC manifest egress ($\le 1.5$s SLO).
-  - Updated `prompts/phase-2-vision-tabular-pipeline.md` with complete implementation plan.
-
-## Next Up
-
-1. Implement Docling layout parser with OCR fallback in `internal/vision/layout/docling_engine.py`.
-2. Implement Table-Transformer tabular dataset extraction and direct S3 Parquet serializer in `internal/vision/table/`.
-3. Implement unary/streaming gRPC AST client pushing to `rag-chunk-lifecycle-service`.
+- Production Hardening & Full End-to-End Orchestration Validation (Phase 3 Audio and Phase 4 GitOps / Chaos suites verified).
 
 ## Architecture Decisions
 
