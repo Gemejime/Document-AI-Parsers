@@ -2,6 +2,12 @@
 requires = ["setuptools>=68.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "cmd*", "internal*"]
+exclude = ["deployments*", "prompts*", "test*", "tasks*"]
+namespaces = true
+
 [project]
 name = "rag-document-ai-worker"
 version = "0.1.0"
