@@ -1,0 +1,17 @@
+apiVersion: v2
+name: rag-document-ai-worker
+description: Production Helm chart for horizontally scalable, decoupled multimodal document and audio AI parser workers
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - document-ai
+  - audio-transcription
+  - temporal
+  - keda
+  - machine-learning
+home: https://github.com/Gemejime/Document-AI-Parsers
+sources:
+  - https://github.com/Gemejime/Document-AI-Parsers
+maintainers:
+  - name: Document AI Team

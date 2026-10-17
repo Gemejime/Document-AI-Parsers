@@ -1,0 +1,45 @@
+{{- if and .Values.prometheusRule .Values.prometheusRule.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "rag-document-ai-worker.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rag-document-ai-worker.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: {{ include "rag-document-ai-worker.fullname" . }}-alerts
+      rules:
+        - alert: QueueBacklogGrowth
+          expr: max_over_time(temporal_activity_schedule_to_start_seconds{task_queue="{{ .Values.taskQueue | default "doc-ai-queue" }}"}[3m]) > 45
+          for: 3m
+          labels:
+            severity: warning
+            component: {{ .Values.workerComponent | default "worker" }}
+          annotations:
+            summary: "Temporal queue schedule-to-start latency exceeded 45s"
+            description: "Temporal activity schedule-to-start latency on task queue {{ "{{ $labels.task_queue }}" }} has exceeded 45 seconds for over 3 minutes."
+
+        - alert: CudaOOMErrors
+          expr: sum by (worker_type, instance) (rate(doc_ai_cuda_oom_errors_total[5m])) > 0
+          for: 0m
+          labels:
+            severity: page
+            component: {{ .Values.workerComponent | default "worker" }}
+          annotations:
+            summary: "CUDA Out-of-Memory error encountered on worker"
+            description: "Worker instance {{ "{{ $labels.instance }}" }} (type: {{ "{{ $labels.worker_type }}" }}) registered CUDA OOM errors within the past 5 minutes."
+
+        - alert: ActivityFailuresHigh
+          expr: (sum by (activity_name) (rate(doc_ai_activity_failures_total[10m])) / sum by (activity_name) (rate(doc_ai_task_duration_seconds_count[10m]))) > 0.02
+          for: 5m
+          labels:
+            severity: page
+            component: {{ .Values.workerComponent | default "worker" }}
+          annotations:
+            summary: "Activity failure rate exceeds 2% across 10 minutes"
+            description: "Activity {{ "{{ $labels.activity_name }}" }} failure rate is above 2% over a 10-minute window."
+{{- end }}

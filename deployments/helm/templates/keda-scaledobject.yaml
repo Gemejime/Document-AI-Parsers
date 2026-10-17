@@ -1,0 +1,28 @@
+{{- if .Values.autoscaling.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "rag-document-ai-worker.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rag-document-ai-worker.labels" . | nindent 4 }}
+  {{- with .Values.autoscaling.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "rag-document-ai-worker.fullname" . }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicaCount | default 1 }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicaCount | default 10 }}
+  pollingInterval: {{ .Values.autoscaling.pollingInterval | default 15 }}
+  cooldownPeriod: {{ .Values.autoscaling.cooldownPeriod | default 300 }}
+  {{- with .Values.autoscaling.advanced }}
+  advanced:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  triggers:
+    {{- toYaml .Values.autoscaling.triggers | nindent 4 }}
+{{- end }}

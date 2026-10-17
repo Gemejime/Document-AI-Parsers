@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package rag.common.v1;
+
+// Normalized coordinates strictly bound to [0.0, 1.0] anchored at top-left origin (0.0, 0.0)
+message BoundingBox {
+  float x1 = 1;  // Normalized top-left x [0.0, 1.0]
+  float y1 = 2;  // Normalized top-left y [0.0, 1.0]
+  float x2 = 3;  // Normalized bottom-right x [0.0, 1.0]
+  float y2 = 4;  // Normalized bottom-right y [0.0, 1.0]
+  int32 page_number = 5;
+}

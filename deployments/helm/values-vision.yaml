@@ -1,0 +1,124 @@
+# Helm values for doc-ai-vision-worker
+replicaCount: 2
+
+workerComponent: "vision-worker"
+taskQueue: "doc-ai-vision-queue"
+
+image:
+  repository: rag-document-ai-vision-worker
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+environment: "production"
+
+env:
+  - name: ENVIRONMENT
+    value: "production"
+  - name: TEMPORAL_HOST
+    value: "temporal-frontend.temporal.svc.cluster.local:7233"
+  - name: TEMPORAL_NAMESPACE
+    value: "default"
+  - name: VISION_TASK_QUEUE
+    value: "doc-ai-vision-queue"
+  - name: PROBE_PORT
+    value: "8080"
+  - name: PROBE_HOST
+    value: "0.0.0.0"
+  - name: LD_PRELOAD
+    value: "/usr/lib/libjemalloc.so"
+  - name: PYTORCH_CUDA_ALLOC_CONF
+    value: "max_split_size_mb:128"
+  - name: OMP_NUM_THREADS
+    value: "2"
+  - name: OPENBLAS_NUM_THREADS
+    value: "2"
+  - name: HF_HOME
+    value: "/models/cache/huggingface"
+  - name: TORCH_HOME
+    value: "/models/cache/torch"
+  - name: DOCLING_CACHE_DIR
+    value: "/models/cache/docling"
+
+resources:
+  requests:
+    cpu: "4000m"
+    memory: "8Gi"
+    nvidia.com/gpu: "1"
+  limits:
+    cpu: "8000m"
+    memory: "16Gi"
+    nvidia.com/gpu: "1"
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+volumes:
+  - name: dshm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 2Gi
+  - name: tmp
+    emptyDir:
+      sizeLimit: 4Gi
+  - name: model-cache
+    persistentVolumeClaim:
+      claimName: doc-ai-model-weights-nvme-pvc
+      readOnly: true
+
+volumeMounts:
+  - name: dshm
+    mountPath: /dev/shm
+  - name: tmp
+    mountPath: /tmp
+  - name: model-cache
+    mountPath: /models/cache
+    readOnly: true
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+
+# Autoscaling via KEDA on Temporal doc-ai-vision-queue depth
+autoscaling:
+  enabled: true
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  cooldownPeriod: 300
+  pollingInterval: 15
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: "http://prometheus-k8s.monitoring.svc.cluster.local:9090"
+        metricName: "temporal_activity_schedule_to_start_seconds"
+        query: 'sum(temporal_activity_schedule_to_start_seconds{task_queue="doc-ai-vision-queue"})'
+        threshold: "5"
+
+serviceMonitor:
+  enabled: true
+  interval: "15s"
+  scrapeTimeout: "10s"
+
+prometheusRule:
+  enabled: true
+
