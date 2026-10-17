@@ -180,15 +180,21 @@ class WhisperEngine:
                         )
                         for w in getattr(seg, "words", [])
                         if (
-                            getattr(w, "end", 0.0) > start_from_offset
+                            getattr(w, "start", 0.0) >= start_from_offset
                             if start_from_offset > 0.0
                             else getattr(w, "end", 0.0) >= start_from_offset
                         )
                     ]
 
+                    seg_start = (
+                        max(float(seg.start), start_from_offset)
+                        if start_from_offset > 0.0
+                        else float(seg.start)
+                    )
+
                     raw_seg = RawWhisperSegment(
                         text=seg.text.strip(),
-                        start_time=float(seg.start),
+                        start_time=seg_start,
                         end_time=float(seg.end),
                         words=words,
                     )

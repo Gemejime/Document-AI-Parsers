@@ -82,12 +82,12 @@ class DoclingEngine:
         Yields:
             PageLayoutResult containing normalized AST nodes.
         """
-        # File presence or mock path validation
-        if not os.path.exists(pdf_path) and not pdf_path.endswith(".pdf"):
-            raise FileNotFoundError(f"PDF slice file not found: {pdf_path}")
+        if self.use_native:
+            if not os.path.exists(pdf_path):
+                raise FileNotFoundError(f"PDF slice file not found: {pdf_path}")
+            if self._converter is None:
+                raise RuntimeError("Native Docling converter is not initialized or unavailable")
 
-        # If native Docling converter is available and file exists on disk
-        if self._converter is not None and os.path.exists(pdf_path):
             yield from self._parse_with_docling_native(
                 pdf_path=pdf_path,
                 start_from_page=start_from_page,
@@ -96,6 +96,10 @@ class DoclingEngine:
                 on_page_complete=on_page_complete,
             )
             return
+
+        # Synthetic page generation (only active when use_native=False)
+        if not os.path.exists(pdf_path) and not pdf_path.endswith(".pdf"):
+            raise FileNotFoundError(f"PDF slice file not found: {pdf_path}")
 
         # Resilient internal parser / test mock parser
         effective_page_count = total_pages if total_pages is not None else 1
