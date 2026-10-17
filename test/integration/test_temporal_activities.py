@@ -16,6 +16,8 @@ from internal.temporal.activities.vision_activity import (
     ParseDocumentSliceInput,
 )
 from internal.transport.grpc.chunk_client import ChunkServiceClient
+from internal.vision.layout.docling_engine import DoclingEngine
+from internal.vision.ocr.fallback_ocr import FallbackOCREngine
 from test.integration.test_audio_pipeline_integration import DummyS3Client
 
 
@@ -67,7 +69,11 @@ async def test_audio_activity_corrupt_input_quarantine() -> None:
 @pytest.mark.asyncio
 async def test_vision_activity_checkpoint_resumption() -> None:
     """Verify activity resumes from committed checkpoint (e.g., killed at page 52, resumes at 51)."""
-    activity = ParseDocumentSliceActivity(chunk_client=ChunkServiceClient(target_endpoint="mock"))
+    activity = ParseDocumentSliceActivity(
+        chunk_client=ChunkServiceClient(target_endpoint="mock"),
+        docling_engine=DoclingEngine(use_native=False),
+        ocr_engine=FallbackOCREngine(use_native=False),
+    )
     input_data = ParseDocumentSliceInput(
         tenant_id="tenant-456",
         document_id="doc-resume",

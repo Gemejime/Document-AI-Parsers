@@ -1,6 +1,8 @@
-"""Unit tests for Docling layout engine adapter, streaming, coordinates, and cancellation."""
-
 import threading
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 from internal.vision.layout.docling_engine import DoclingEngine, PageLayoutResult
 
@@ -82,3 +84,50 @@ def test_docling_engine_progress_callback() -> None:
     )
 
     assert completed_pages == [1, 2, 3, 4]
+
+
+def test_docling_engine_native_missing_file_raises_filenotfound() -> None:
+    """Verify that in native mode, missing file raises FileNotFoundError without falling through."""
+    engine = DoclingEngine(use_native=True)
+    with pytest.raises(FileNotFoundError, match="PDF slice file not found"):
+        list(engine.parse_slice_pages(pdf_path="non_existent_file.pdf"))
+
+
+def test_docling_engine_native_converter_unavailable_raises_runtime_error(tmp_path: Path) -> None:
+    """Verify that in native mode, unavailable converter raises RuntimeError without fall-through."""
+    test_pdf = tmp_path / "valid_slice.pdf"
+    test_pdf.write_bytes(b"%PDF-1.4 mock content")
+
+    engine = DoclingEngine(use_native=False)
+    engine.use_native = True
+    engine._converter = None
+
+    with pytest.raises(
+        RuntimeError, match="Native Docling converter is not initialized or unavailable"
+    ):
+        list(engine.parse_slice_pages(pdf_path=str(test_pdf)))
+
+
+def test_docling_engine_native_delegation_no_fallthrough(tmp_path: Path) -> None:
+    """Verify native mode delegates to _parse_with_docling_native and does not generate synthetic pages."""
+    test_pdf = tmp_path / "valid_slice.pdf"
+    test_pdf.write_bytes(b"%PDF-1.4 mock content")
+
+    engine = DoclingEngine(use_native=False)
+    engine.use_native = True
+
+    mock_converter = MagicMock()
+    mock_doc = MagicMock()
+    mock_doc.pages = [MagicMock()]
+    mock_doc.iterate_items.return_value = []
+    mock_conv_res = MagicMock()
+    mock_conv_res.document = mock_doc
+    mock_converter.convert.return_value = mock_conv_res
+
+    engine._converter = mock_converter
+
+    pages = list(engine.parse_slice_pages(pdf_path=str(test_pdf), total_pages=1))
+    assert len(pages) == 1
+    assert mock_converter.convert.called
+    # In native mode with empty items, nodes should be empty (synthetic pages would have heading, paragraph, table)
+    assert len(pages[0].nodes) == 0
