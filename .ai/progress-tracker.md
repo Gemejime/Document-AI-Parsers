@@ -11,6 +11,8 @@
 ## Completed
 
 - **Code Review Findings Remediation & Hardening**:
+  - **Starlette TestClient Dependencies** (`pyproject.toml`):
+    - Added `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev`, resolving test collection errors (`RuntimeError: The starlette.testclient module requires the httpx2 package to be installed`) across `test/unit/test_probe_server.py` and `test/unit/test_telemetry_metrics.py`.
   - **Setuptools Package Discovery Configuration** (`pyproject.toml`):
     - Configured explicit `[tool.setuptools.packages.find]` specifying `include = ["api*", "cmd*", "internal*"]` and `exclude = ["deployments*", "prompts*", "test*", "tasks*"]` with namespace support, resolving setuptools flat-layout multi-package discovery build failure during `pip install -e ".[dev]"`.
   - **Native Engine Failure Semantics & Resumption Clamping** (`internal/`, `test/`):
@@ -151,3 +153,4 @@
     - Enhanced checkpoint resumption: persisted processed segments in `AudioHeartbeatDetails` and replayed on resume so retries deliver full transcripts without loss.
   - `internal/transport/grpc/chunk_client.py`: Verified exception propagation in `stream_audio_transcript` (already raising errors on RPC/stream failure).
   - Synchronized `.ai/doc-api.md` with updated `AudioHeartbeatDetails` schema.
+  - Resolved CI pytest collection failure by adding `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev` in `pyproject.toml` to support Starlette's `TestClient`.
