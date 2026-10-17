@@ -1,6 +1,7 @@
-"""Unit tests for Faster-Whisper ASR engine adapter."""
-
+import sys
 import threading
+
+import pytest
 
 from internal.audio.asr.whisper_engine import WhisperEngine
 from internal.audio.models import RawWhisperSegment
@@ -79,10 +80,9 @@ def test_whisper_engine_cooperative_cancellation() -> None:
     assert len(segments) == 0
 
 
-def test_whisper_engine_native_error_propagation() -> None:
+def test_whisper_engine_native_error_propagation(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify WhisperEngine re-raises errors when use_native=True."""
-    import pytest
-
+    monkeypatch.setitem(sys.modules, "faster_whisper", None)
     with pytest.raises((ModuleNotFoundError, ImportError)):
         WhisperEngine(use_native=True)
 

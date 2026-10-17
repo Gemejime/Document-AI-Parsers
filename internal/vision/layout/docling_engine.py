@@ -251,20 +251,76 @@ class DoclingEngine:
                 prov = getattr(item, "prov", None)
                 box = getattr(prov[0], "bbox", None) if prov and len(prov) > 0 else None
                 if box:
+                    page_width = 612.0
+                    page_height = 792.0
+                    if hasattr(doc, "pages"):
+                        try:
+                            page_obj = (
+                                doc.pages.get(page_num)
+                                if isinstance(doc.pages, dict)
+                                else doc.pages[page_num]
+                            )
+                            if page_obj and hasattr(page_obj, "size"):
+                                page_width = float(page_obj.size.width)
+                                page_height = float(page_obj.size.height)
+                        except (KeyError, IndexError, AttributeError):
+                            page_width = float(getattr(box, "coord_origin_width", 612.0))
+                            page_height = float(getattr(box, "coord_origin_height", 792.0))
+                    else:
+                        page_width = float(getattr(box, "coord_origin_width", 612.0))
+                        page_height = float(getattr(box, "coord_origin_height", 792.0))
+
+                    coord_origin = getattr(box, "coord_origin", "BOTTOMLEFT")
+                    origin = (
+                        "bottom-left"
+                        if str(coord_origin).upper().endswith("BOTTOMLEFT")
+                        or str(coord_origin).upper() == "BOTTOMLEFT"
+                        else "top-left"
+                    )
+
                     norm_bbox = normalize_bbox(
                         x1=float(box.l),
                         y1=float(box.t),
                         x2=float(box.r),
                         y2=float(box.b),
-                        page_width=float(getattr(box, "coord_origin_width", 612.0)),
-                        page_height=float(getattr(box, "coord_origin_height", 792.0)),
-                        origin="bottom-left"
-                        if getattr(box, "coord_origin", "BOTTOMLEFT") == "BOTTOMLEFT"
-                        else "top-left",
+                        page_width=page_width,
+                        page_height=page_height,
+                        origin=origin,
                         page_number=page_num,
                     )
                 else:
                     norm_bbox = normalize_bbox(0, 0, 100, 100, 100, 100, page_number=page_num)
+
+                table_data: TableData | None = None
+                if node_type == "table":
+                    headers: list[str] = []
+                    rows: list[list[Any]] = []
+                    grid = getattr(getattr(item, "data", None), "grid", None)
+                    if grid:
+                        headers = [getattr(c, "text", str(c)) for c in grid[0]]
+                        rows = [[getattr(c, "text", str(c)) for c in row] for row in grid[1:]]
+                    elif hasattr(item, "export_to_dataframe"):
+                        try:
+                            df = item.export_to_dataframe()
+                            headers = [str(c) for c in df.columns]
+                            rows = df.values.tolist()
+                        except Exception:
+                            pass
+
+                    caption_text = ""
+                    caption_obj = getattr(item, "caption", None)
+                    if caption_obj:
+                        caption_text = getattr(caption_obj, "text", str(caption_obj))
+
+                    table_data = TableData(
+                        headers=headers,
+                        rows=rows,
+                        bbox=norm_bbox,
+                        page_number=page_num,
+                        caption=caption_text,
+                    )
+                    if not text:
+                        text = table_data.to_markdown()
 
                 nodes.append(
                     ParsedASTNode(
@@ -273,6 +329,7 @@ class DoclingEngine:
                         text_content=text,
                         bounding_box=norm_bbox,
                         confidence=0.90,
+                        table_data=table_data,
                     )
                 )
 

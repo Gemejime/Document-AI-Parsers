@@ -11,6 +11,16 @@
 ## Completed
 
 - **Code Review Findings Remediation & Hardening**:
+  - **Docker & Deployment Hardening** (`.dockerignore`, `deployments/`):
+    - Added `.env` to `.dockerignore` to prevent local environment file leaks during container builds.
+    - Guarded vision and audio Helm values image tag updates in `.github/workflows/docker-publish.yml` with worker-selection conditions (`WORKER`).
+    - Aligned PersistentVolumeClaim name across `deployments/argocd/applicationset.yaml` and `deployments/helm/templates/pvc.yaml` directly to `doc-ai-model-weights-nvme-pvc` matching pod volume mounts.
+  - **Vision & Audio Engine Checkpoint & Parquet Egress Fidelity** (`internal/`):
+    - Updated native resume filters in `WhisperEngine.transcribe_intervals` to skip boundary segments ending exactly at `start_from_offset` and exclude words at or before checkpoint when `start_from_offset > 0.0`.
+    - Enhanced `DoclingEngine._parse_with_docling_native` to read actual page dimensions from `doc.pages[page_num].size` with coordinate origin derivation from `box.coord_origin`, and converted native table grids to project `TableData` for table nodes to reach Parquet egress.
+  - **Test Suite Resiliency & SLO Alignment** (`test/`):
+    - Aligned manifest conversion benchmark in `test/performance/test_manifest_egress_perf.py` to enforce the documented 1.5s SLO.
+    - Updated native error propagation tests in `test/unit/test_whisper_engine.py` and `test/unit/test_pyannote_engine.py` to use `monkeypatch` forcing `faster_whisper` and `pyannote.audio` import failures.
   - **Least Privilege Workflow Permissions & Reliable GitOps Push** (`.github/workflows/docker-publish.yml`):
     - Lowered default workflow permissions to `contents: read`.
     - Assigned `packages: write` strictly to the `publish` job and `contents: write` strictly to the `sync-gitops-helm` job.

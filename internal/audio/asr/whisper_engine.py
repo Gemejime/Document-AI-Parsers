@@ -165,7 +165,10 @@ class WhisperEngine:
                         break
 
                     # Skip segments occurring before resumption checkpoint
-                    if seg.end < start_from_offset:
+                    if start_from_offset > 0.0:
+                        if seg.end <= start_from_offset:
+                            continue
+                    elif seg.end < start_from_offset:
                         continue
 
                     words = [
@@ -176,7 +179,11 @@ class WhisperEngine:
                             confidence=float(getattr(w, "probability", 0.95)),
                         )
                         for w in getattr(seg, "words", [])
-                        if getattr(w, "end", 0.0) >= start_from_offset
+                        if (
+                            getattr(w, "end", 0.0) > start_from_offset
+                            if start_from_offset > 0.0
+                            else getattr(w, "end", 0.0) >= start_from_offset
+                        )
                     ]
 
                     raw_seg = RawWhisperSegment(

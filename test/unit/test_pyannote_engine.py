@@ -1,6 +1,7 @@
-"""Unit tests for PyAnnote speaker diarization engine adapter."""
-
+import sys
 import threading
+
+import pytest
 
 from internal.audio.diarization.pyannote_engine import PyAnnoteEngine
 from internal.audio.models import SpeakerTurn
@@ -91,10 +92,9 @@ def test_pyannote_engine_cooperative_cancellation() -> None:
     assert len(turns) == 0
 
 
-def test_pyannote_engine_native_error_propagation() -> None:
+def test_pyannote_engine_native_error_propagation(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify PyAnnoteEngine re-raises errors when use_native=True."""
-    import pytest
-
+    monkeypatch.setitem(sys.modules, "pyannote.audio", None)
     with pytest.raises((ModuleNotFoundError, ImportError)):
         PyAnnoteEngine(use_native=True)
 
