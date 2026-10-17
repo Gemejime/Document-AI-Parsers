@@ -154,3 +154,5 @@
   - `internal/transport/grpc/chunk_client.py`: Verified exception propagation in `stream_audio_transcript` (already raising errors on RPC/stream failure).
   - Synchronized `.ai/doc-api.md` with updated `AudioHeartbeatDetails` schema.
   - Resolved CI pytest collection failure by adding `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev` in `pyproject.toml` to support Starlette's `TestClient`.
+  - Configured `GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}` in `.github/workflows/ci.yml` secret-scan step to comply with Gitleaks Action v2 licensing requirement for the `Gemejime` GitHub Organization.
+
