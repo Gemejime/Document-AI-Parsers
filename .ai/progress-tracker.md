@@ -11,6 +11,12 @@
 ## Completed
 
 - **Code Review Findings Remediation & Hardening**:
+  - **Setuptools Package Discovery Configuration** (`pyproject.toml`):
+    - Configured explicit `[tool.setuptools.packages.find]` specifying `include = ["api*", "cmd*", "internal*"]` and `exclude = ["deployments*", "prompts*", "test*", "tasks*"]` with namespace support, resolving setuptools flat-layout multi-package discovery build failure during `pip install -e ".[dev]"`.
+  - **Native Engine Failure Semantics & Resumption Clamping** (`internal/`, `test/`):
+    - Updated `DoclingEngine.parse_slice_pages` so native mode strictly validates local PDF file existence (`FileNotFoundError`) and converter readiness (`RuntimeError`), preventing accidental fall-through to synthetic page generation. Synthetic pages are now strictly produced only when `use_native=False`.
+    - Updated `WhisperEngine.transcribe_intervals` to clamp resumed segment start times to `start_from_offset` and exclude words starting before `start_from_offset` (`w.start >= start_from_offset`), preserving baseline segment and word timing behavior when starting at offset zero.
+    - Added comprehensive unit tests in `test/unit/test_docling_engine.py` and `test/unit/test_whisper_engine.py` verifying error handling, strict lack of fall-through, and boundary clamping.
   - **Docker & Deployment Hardening** (`.dockerignore`, `deployments/`):
     - Added `.env` to `.dockerignore` to prevent local environment file leaks during container builds.
     - Guarded vision and audio Helm values image tag updates in `.github/workflows/docker-publish.yml` with worker-selection conditions (`WORKER`).

@@ -271,6 +271,8 @@ message BoundingBox {
   ```
 - **Resumption & Cooperative Cancellation**:
   - `parse_slice_pages(pdf_path, start_from_page=0, total_pages=..., stop_event=..., on_page_complete=...)`:
+    - In native mode (`use_native=True`), strictly validates that `pdf_path` exists on disk (raising `FileNotFoundError` if missing) and that `self._converter` is initialized (raising `RuntimeError` if unavailable), ensuring execution cannot silently fall through to simulated pages.
+    - Synthetic layout generation is strictly executed only when `use_native=False`.
     - Skips pages `< start_from_page` for zero-duplicate mid-slice recovery.
     - Yields page by page across worker thread boundary, updating Temporal heartbeats every 10s.
     - Checks `stop_event.is_set()` to abort cleanly on activity cancellation.
@@ -354,7 +356,7 @@ message BoundingBox {
 - **`WhisperEngine`**:
   - High-throughput CTranslate2 runner (`settings.WHISPER_MODEL_SIZE`, `settings.WHISPER_DEVICE`, `settings.WHISPER_COMPUTE_TYPE`, `settings.WHISPER_BEAM_SIZE`).
   - Word-level timestamps (`word_timestamps=True`).
-  - Resumption support: skips audio prior to `start_from_offset` for mid-window recovery.
+  - Resumption support: skips audio prior to `start_from_offset` for mid-window recovery. When `start_from_offset > 0.0`, each resumed segment's start time is clamped to `start_from_offset` (`max(float(seg.start), start_from_offset)`) and words whose start timestamp precedes `start_from_offset` are excluded (`w.start >= start_from_offset`). Preserves original segment and word filtering when starting from offset zero.
   - Progressive audio interval processing (e.g. 15–30s strides) yielding across the thread boundary for active heartbeat reporting.
   - Cooperative cancellation via `threading.Event` (`stop_event`).
   - Resilient mock/simulated fallback runner when CUDA/CTranslate2 binaries are absent.
