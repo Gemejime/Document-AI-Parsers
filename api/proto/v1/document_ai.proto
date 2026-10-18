@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package rag.document_ai.v1;
+
+import "api/proto/v1/common.proto";
+
+service DocumentAIChunkService {
+  rpc StreamDocumentAST(stream DocumentASTChunk) returns (ASTStreamResponse);
+  rpc StreamAudioTranscript(stream AudioTranscriptChunk) returns (ASTStreamResponse);
+}
+
+message DocumentASTChunk {
+  string tenant_id = 1;
+  string document_id = 2;
+  int32 page_number = 3;
+  repeated ASTNode nodes = 4;
+}
+
+message ASTNode {
+  string node_id = 1;
+  string node_type = 2;         // "paragraph", "heading", "table", "list", etc.
+  string text_content = 3;      // Text content or Markdown summary when node_type == "table"
+  rag.common.v1.BoundingBox bounding_box = 4;
+  string table_parquet_s3_uri = 5; // Populated only if node_type == "table"
+}
+
+message AudioTranscriptChunk {
+  string tenant_id = 1;
+  string audio_id = 2;
+  repeated TranscriptSegment segments = 3;
+}
+
+message TranscriptSegment {
+  string speaker_id = 1;
+  double start_time_seconds = 2; // Absolute timeline timestamp (start_offset_seconds + window_offset)
+  double end_time_seconds = 3;   // Absolute timeline timestamp
+  string text = 4;
+  repeated WordTimestamp words = 5;
+}
+
+message WordTimestamp {
+  string word = 1;
+  double start_time = 2;
+  double end_time = 3;
+  float confidence = 4;
+}
+
+message ASTStreamResponse {
+  bool acknowledged = 1;
+  int64 chunks_received = 2;
+  string status_message = 3;
+}

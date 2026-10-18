@@ -1,0 +1,147 @@
+# Base shared default configuration for rag-document-ai-worker Helm 3 chart
+replicaCount: 1
+
+workerComponent: "worker"
+taskQueue: "doc-ai-queue"
+
+image:
+  repository: rag-document-ai-worker
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: true
+
+environment: "production"
+
+env:
+  - name: TEMPORAL_HOST
+    value: "temporal-frontend.temporal.svc.cluster.local:7233"
+  - name: TEMPORAL_NAMESPACE
+    value: "default"
+  - name: PROBE_PORT
+    value: "8080"
+  - name: PROBE_HOST
+    value: "0.0.0.0"
+  - name: LD_PRELOAD
+    value: "/usr/lib/libjemalloc.so"
+  - name: PYTORCH_CUDA_ALLOC_CONF
+    value: "max_split_size_mb:128"
+  - name: OMP_NUM_THREADS
+    value: "2"
+  - name: OPENBLAS_NUM_THREADS
+    value: "2"
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+resources:
+  requests:
+    cpu: "4000m"
+    memory: "8Gi"
+    nvidia.com/gpu: "1"
+  limits:
+    cpu: "8000m"
+    memory: "16Gi"
+    nvidia.com/gpu: "1"
+
+volumes:
+  - name: dshm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 2Gi
+  - name: tmp
+    emptyDir:
+      sizeLimit: 4Gi
+  - name: model-cache
+    persistentVolumeClaim:
+      claimName: doc-ai-model-weights-nvme-pvc
+      readOnly: true
+
+volumeMounts:
+  - name: dshm
+    mountPath: /dev/shm
+  - name: tmp
+    mountPath: /tmp
+  - name: model-cache
+    mountPath: /models/cache
+    readOnly: true
+
+persistence:
+  enabled: true
+  existingClaim: true
+  name: doc-ai-model-weights-nvme-pvc
+  accessModes:
+    - ReadOnlyMany
+  storageClass: "gp3-nvme"
+  size: 100Gi
+  annotations: {}
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+
+# Autoscaling via KEDA on Temporal task queue depth
+autoscaling:
+  enabled: true
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  cooldownPeriod: 300
+  pollingInterval: 15
+  triggers: []
+
+# Prometheus Operator ServiceMonitor
+serviceMonitor:
+  enabled: true
+  interval: "15s"
+  scrapeTimeout: "10s"
+  additionalLabels: {}
+
+# Prometheus Operator Alerting Rules
+prometheusRule:
+  enabled: true
+  additionalLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

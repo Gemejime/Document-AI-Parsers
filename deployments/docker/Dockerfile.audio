@@ -1,0 +1,67 @@
+# Multi-stage production container for doc-ai-audio-worker
+FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    python3-pip \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3.11 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY cmd ./cmd
+COPY internal ./internal
+RUN pip install --upgrade pip wheel setuptools && \
+    pip install .[audio]
+
+# Final runtime image
+FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    LD_PRELOAD=/usr/lib/libjemalloc.so \
+    PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128 \
+    OMP_NUM_THREADS=2 \
+    OPENBLAS_NUM_THREADS=2 \
+    HF_HOME=/models/cache/huggingface \
+    TORCH_HOME=/models/cache/torch \
+    WHISPER_CACHE_DIR=/models/cache/whisper
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    libjemalloc2 \
+    libsndfile1 \
+    ffmpeg \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /usr/lib/libjemalloc.so
+
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+
+# Non-root security profile
+RUN useradd -u 1000 -m -s /bin/bash appuser && \
+    mkdir -p /models/cache /tmp && \
+    chown -R appuser:appuser /models/cache /tmp /app
+
+COPY --chown=appuser:appuser . /app
+
+USER 1000
+
+EXPOSE 8080
+
+ENTRYPOINT ["python3.11", "-m", "cmd.audio_worker.main"]
