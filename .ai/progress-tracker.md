@@ -173,3 +173,7 @@
   - Explicitly integrated `CHUNK_SERVICE_ENDPOINT` into `WorkerSettings` (`internal/config/settings.py`) and wired as default target endpoint in `ChunkServiceClient` (`internal/transport/grpc/chunk_client.py`).
   - Patched `activity.heartbeat` in chaos recovery test suite (`test/chaos/test_checkpoint_chaos.py`) ensuring clean long-duration activity tests without activity context errors.
   - Fully synchronized `.ai/doc-api.md` Section 8 and `README.md` key environment variable reference tables.
+- **Main Branch Merge & Conflict Resolution**:
+  - Merged latest updates from `origin/main` (commit `284661f`: `.github/workflows` cleanup delegating to `rag-document-ai-worker`).
+  - Resolved modify/delete conflicts for `.github/workflows/ci.yml` and `.github/workflows/docker-publish.yml` by preserving the updated CI/CD definitions from the feature branch.
+  - Verified pre-commit validation checklist: Ruff lint/format clean, Mypy strict type checking clean (65 files), and 72/72 unit and integration tests passing.
