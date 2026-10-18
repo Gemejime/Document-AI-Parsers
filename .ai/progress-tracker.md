@@ -18,8 +18,13 @@
   - **Doc API Synchronization** (`.ai/doc-api.md`):
     - Added Section 8 detailing runtime configuration schema.
 - **Code Review Findings Remediation & Hardening**:
-  - **Starlette TestClient Dependencies** (`pyproject.toml`):
-    - Added `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev`, resolving test collection errors (`RuntimeError: The starlette.testclient module requires the httpx2 package to be installed`) across `test/unit/test_probe_server.py` and `test/unit/test_telemetry_metrics.py`.
+  - **Dev Dependencies & TestClient Remediation** (`pyproject.toml`):
+    - Removed unsatisfiable `httpx2>=0.1.0` entry from `[project.optional-dependencies] dev` while retaining `httpx>=0.27.0`.
+  - **gRPC Chunk Service Client Target Endpoint Resolution** (`internal/transport/grpc/chunk_client.py`, `test/unit/`):
+    - Updated `ChunkServiceClient.__init__` to assign `settings.CHUNK_SERVICE_ENDPOINT` strictly when `target_endpoint is None`, preserving explicitly empty strings (`""`) to route properly to mock/offline branches. Added unit test in `test/unit/test_audio_grpc_stream.py`.
+  - **Documentation & Metric Contract Alignment** (`architecture.md`, `README.md`):
+    - Aligned `TranscribeAudioWindowActivity` JSON schemas in `architecture.md` with `.ai/doc-api.md` (`audio_id`, `audio_hash`, `window_duration_seconds`, `audio_seconds_processed`, `segment_count`, `speaker_count`, `ast_streamed`).
+    - Aligned exported Prometheus metric table in `README.md` to reflect runtime names `doc_ai_pages_processed_total` and `doc_ai_task_duration_seconds`.
   - **Setuptools Package Discovery Configuration** (`pyproject.toml`):
     - Configured explicit `[tool.setuptools.packages.find]` specifying `include = ["api*", "cmd*", "internal*"]` and `exclude = ["deployments*", "prompts*", "test*", "tasks*"]` with namespace support, resolving setuptools flat-layout multi-package discovery build failure during `pip install -e ".[dev]"`.
   - **Native Engine Failure Semantics & Resumption Clamping** (`internal/`, `test/`):

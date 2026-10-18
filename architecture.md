@@ -226,22 +226,21 @@ The internal codebase is architected into five decoupled layers adhering strictl
 // Input: TranscribeAudioWindowInput
 {
   "tenant_id": "tenant-prod-42",
-  "media_id": "media-11029",
-  "doc_hash": "f6e5d4c3b2a1...",
+  "audio_id": "audio-11029",
+  "audio_hash": "f6e5d4c3b2a1...",
   "s3_bucket": "rag-doc-ai-storage-prod",
-  "s3_key": "slices/tenant-prod-42/f6e5d4c3b2a1/audio_part_01.wav",
+  "s3_key": "audio/tenant-prod-42/f6e5d4c3b2a1/audio_part_01.wav",
   "start_offset_seconds": 0.0,
-  "duration_seconds": 600.0,
-  "min_speakers": 1,
-  "max_speakers": 4
+  "window_duration_seconds": 600.0
 }
 
 // Output: TranscribeAudioWindowOutput
 {
-  "audio_duration_seconds": 600.0,
-  "segments_transcribed": 84,
-  "speakers_detected": 3,
-  "transcription_rtf": 0.082
+  "audio_seconds_processed": 600.0,
+  "segment_count": 84,
+  "speaker_count": 3,
+  "ast_streamed": true,
+  "duration_seconds": 49.2
 }
 ```
 

@@ -135,12 +135,12 @@ Each worker exposes an internal HTTP server (default port `8080`) providing live
 
 | Metric Name | Type | Description |
 | :--- | :--- | :--- |
-| `doc_ai_vision_pages_processed_total` | Counter | Total document PDF pages processed by vision workers. |
+| `doc_ai_pages_processed_total` | Counter | Total document PDF pages processed by vision workers. |
 | `doc_ai_vision_tables_extracted_total` | Counter | Total tabular elements extracted and written to Parquet. |
 | `doc_ai_ocr_fallbacks_total` | Counter | Total low-confidence text blocks requiring secondary OCR pass. |
 | `doc_ai_audio_seconds_transcribed_total` | Counter | Cumulative audio duration (in seconds) transcribed. |
 | `doc_ai_diarization_speakers_detected` | Histogram | Distribution of distinct speaker clusters identified per window. |
-| `doc_ai_activity_duration_seconds` | Histogram | End-to-end execution latency for Temporal activities. |
+| `doc_ai_task_duration_seconds` | Histogram | End-to-end execution latency for Temporal activities. |
 | `doc_ai_vram_usage_bytes` | Gauge | Active CUDA VRAM allocation tracked across worker execution. |
 | `doc_ai_activity_failures_total` | Counter | Activity execution errors labeled by failure reason. |
 
