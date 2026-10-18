@@ -492,6 +492,10 @@ Runtime configuration is managed through Pydantic `WorkerSettings` (`internal.co
 | `WHISPER_MODEL_SIZE` | string | `large-v3` | Faster-Whisper variant (`tiny`, `base`, `small`, `medium`, `large-v3`). |
 | `WHISPER_DEVICE` | string | `cuda` | Inference device (`cuda` or `cpu`). |
 | `WHISPER_COMPUTE_TYPE` | string | `float16` | Precision / quantization (`float16`, `int8_float16`, `float32`). |
+| `WHISPER_BEAM_SIZE` | integer | `5` | Beam search width for Whisper decoding. |
+| `PYANNOTE_MODEL_ID` | string | `pyannote/speaker-diarization-3.1` | Hugging Face model repository ID for PyAnnote speaker diarization. |
+| `AUDIO_SAMPLE_RATE` | integer | `16000` | Native audio sample rate in Hz for Whisper and PyAnnote. |
+| `AUDIO_PROGRESS_STEP_SECONDS` | float | `30.0` | Progressive audio window interval chunk size in seconds. |
 | `CHUNK_SERVICE_ENDPOINT` | string | `rag-chunk-lifecycle-service:50051` | Downstream gRPC chunk service endpoint (`mock` for local/offline testing). |
 | `VRAM_THRESHOLD_BYTES` | integer | `21474836480` | GPU VRAM threshold ceiling (20 GiB). |
 

@@ -163,3 +163,8 @@
   - Synchronized `.ai/doc-api.md` with updated `AudioHeartbeatDetails` schema.
   - Resolved CI pytest collection failure by adding `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev` in `pyproject.toml` to support Starlette's `TestClient`.
   - Configured `GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}` in `.github/workflows/ci.yml` secret-scan step to comply with Gitleaks Action v2 licensing requirement for the `Gemejime` GitHub Organization.
+- **Production Environment Configuration & Hardening**:
+  - Analyzed and synthesized all environment variables required for running `rag-document-ai-worker` in production, creating comprehensive `.env.example` template with security and hardware allocator invariants (`jemalloc`, `PYTORCH_CUDA_ALLOC_CONF`, thread pinning).
+  - Explicitly integrated `CHUNK_SERVICE_ENDPOINT` into `WorkerSettings` (`internal/config/settings.py`) and wired as default target endpoint in `ChunkServiceClient` (`internal/transport/grpc/chunk_client.py`).
+  - Patched `activity.heartbeat` in chaos recovery test suite (`test/chaos/test_checkpoint_chaos.py`) ensuring clean long-duration activity tests without activity context errors.
+  - Fully synchronized `.ai/doc-api.md` Section 8 and `README.md` key environment variable reference tables.
