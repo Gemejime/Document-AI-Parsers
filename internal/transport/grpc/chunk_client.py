@@ -122,7 +122,9 @@ class ChunkServiceClient:
         timeout_seconds: float = 5.0,
         stub: Any = None,
     ) -> None:
-        self.target_endpoint = target_endpoint or settings.CHUNK_SERVICE_ENDPOINT
+        self.target_endpoint = (
+            settings.CHUNK_SERVICE_ENDPOINT if target_endpoint is None else target_endpoint
+        )
         self.timeout_seconds = timeout_seconds
         self.stub = stub
 

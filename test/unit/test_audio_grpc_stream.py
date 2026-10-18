@@ -104,3 +104,32 @@ async def test_stream_audio_transcript_offline_fallback() -> None:
     )
 
     assert success is True
+
+
+@pytest.mark.asyncio
+async def test_stream_empty_target_endpoint() -> None:
+    """Verify explicitly empty target_endpoint is preserved and takes mock/offline branch."""
+    client = ChunkServiceClient(target_endpoint="")
+    assert client.target_endpoint == ""
+
+    seg = AlignedTranscriptSegment(
+        speaker_id="SPEAKER_00",
+        start_time_seconds=0.0,
+        end_time_seconds=1.0,
+        text="empty endpoint test",
+        words=[],
+    )
+
+    audio_success = await client.stream_audio_transcript(
+        tenant_id="tenant-empty",
+        audio_id="audio-empty",
+        segments_generator=[seg],
+    )
+    assert audio_success is True
+
+    doc_success = await client.stream_document_ast(
+        tenant_id="tenant-empty",
+        document_id="doc-empty",
+        chunks_generator=[],
+    )
+    assert doc_success is True
