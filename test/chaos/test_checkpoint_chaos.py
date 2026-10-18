@@ -80,6 +80,7 @@ async def test_vision_sigkill_chaos_recovery_at_page_51() -> None:
     with (
         patch("temporalio.activity.in_activity", return_value=True),
         patch("temporalio.activity.info", return_value=mock_activity_info),
+        patch("temporalio.activity.heartbeat"),
     ):
         result = await activity.run(input_payload)
 
@@ -132,6 +133,7 @@ async def test_audio_sigkill_chaos_recovery_at_offset_45() -> None:
     with (
         patch("temporalio.activity.in_activity", return_value=True),
         patch("temporalio.activity.info", return_value=mock_activity_info),
+        patch("temporalio.activity.heartbeat"),
     ):
         output = await activity.run(input_payload)
 

@@ -7,7 +7,7 @@ import grpc
 
 from api.proto.v1 import common_pb2, document_ai_pb2, document_ai_pb2_grpc
 from internal.audio.models import AlignedTranscriptSegment
-from internal.config.settings import structlog
+from internal.config.settings import settings, structlog
 from internal.vision.layout.docling_engine import PageLayoutResult, ParsedASTNode
 
 
@@ -118,11 +118,11 @@ class ChunkServiceClient:
 
     def __init__(
         self,
-        target_endpoint: str = "rag-chunk-lifecycle-service:50051",
+        target_endpoint: str | None = None,
         timeout_seconds: float = 5.0,
         stub: Any = None,
     ) -> None:
-        self.target_endpoint = target_endpoint
+        self.target_endpoint = target_endpoint or settings.CHUNK_SERVICE_ENDPOINT
         self.timeout_seconds = timeout_seconds
         self.stub = stub
 

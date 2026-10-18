@@ -26,6 +26,7 @@ def test_worker_settings_defaults() -> None:
     assert cfg.MODEL_CACHE_DIR == "/models/cache"
     assert cfg.HF_HOME == "/models/cache/huggingface"
     assert cfg.TORCH_HOME == "/models/cache/torch"
+    assert cfg.CHUNK_SERVICE_ENDPOINT == "rag-chunk-lifecycle-service:50051"
 
 
 def test_worker_settings_env_override() -> None:

@@ -132,6 +132,10 @@ class WorkerSettings(BaseSettings):
         default=30.0,
         description="Audio window interval chunk size in seconds for progressive processing",
     )
+    CHUNK_SERVICE_ENDPOINT: str = Field(
+        default="rag-chunk-lifecycle-service:50051",
+        description="Downstream gRPC chunk lifecycle endpoint for streaming ASTs and transcripts",
+    )
 
 
 # Global singleton settings
