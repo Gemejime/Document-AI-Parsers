@@ -482,6 +482,7 @@ Runtime configuration is managed through Pydantic `WorkerSettings` (`internal.co
 | `TORCH_HOME` | string | `/models/cache/torch` | PyTorch cache directory. |
 | `DOCLING_CACHE_DIR` | string | `/models/cache/docling` | Docling layout model artifacts cache. |
 | `WHISPER_CACHE_DIR` | string | `/models/cache/whisper` | Faster-Whisper / CTranslate2 model cache. |
+| `PPOCR_HOME` | string | `/tmp/.paddleocr` | PaddleOCR model cache directory (writable directory for read-only containers). |
 | `HF_TOKEN` | string / null | `None` | Hugging Face user access token (required for gated `pyannote/speaker-diarization-3.1`). |
 | `HEARTBEAT_INTERVAL_SECONDS` | float | `10.0` | Frequency in seconds of active Temporal activity progress heartbeats. |
 | `HEARTBEAT_TIMEOUT_SECONDS` | float | `30.0` | Heartbeat timeout buffer guarding against GC / GPU batch execution jitter. |
