@@ -13,7 +13,7 @@ from internal.config.settings import (
 
 def test_worker_settings_defaults() -> None:
     """Verify default values comply with production architecture requirements."""
-    cfg = WorkerSettings()
+    cfg = WorkerSettings(_env_file=None)
     assert cfg.ENVIRONMENT == "development"
     assert cfg.TEMPORAL_HOST == "localhost:7233"
     assert cfg.TEMPORAL_NAMESPACE == "default"
@@ -27,6 +27,7 @@ def test_worker_settings_defaults() -> None:
     assert cfg.HF_HOME == "/models/cache/huggingface"
     assert cfg.TORCH_HOME == "/models/cache/torch"
     assert cfg.CHUNK_SERVICE_ENDPOINT == "rag-chunk-lifecycle-service:50051"
+    assert cfg.PPOCR_HOME == "/tmp/.paddleocr"
 
 
 def test_worker_settings_env_override() -> None:
