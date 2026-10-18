@@ -10,6 +10,13 @@
 
 ## Completed
 
+- **Documentation & Environment Reference Hardening**:
+  - **Comprehensive Production Architecture Specification** (`architecture.md`):
+    - Created dedicated root `architecture.md` focused on `rag-document-ai-worker`, detailing the decoupled worker pool topology (`doc-ai-vision-worker` and `doc-ai-audio-worker`), microservice interaction boundaries (upstream `rag-ingestion-coordinator`, downstream `rag-chunk-lifecycle-service` over gRPC HTTP/2, and Triton `rag-inference-serving`), 5-layer internal architecture, GIL thread isolation with 10s heartbeat checkpoints, end-to-end Mermaid sequence flows, and KEDA queue depth autoscaling.
+  - **Comprehensive Production README** (`README.md`):
+    - Overhauled `README.md` with full architectural topology, decoupled compute pool definitions, runtime environment variable reference table, HTTP documentation/probe/metrics endpoint reference (`/docs`, `/redoc`, `/api/docs`, `/healthz`, `/ready`, `/metrics`), model weights NVMe PVC caching strategy, secured logging invariants, local development quickstart, and Docker/Helm/ArgoCD deployment guides.
+  - **Doc API Synchronization** (`.ai/doc-api.md`):
+    - Added Section 8 detailing runtime configuration schema.
 - **Code Review Findings Remediation & Hardening**:
   - **Starlette TestClient Dependencies** (`pyproject.toml`):
     - Added `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev`, resolving test collection errors (`RuntimeError: The starlette.testclient module requires the httpx2 package to be installed`) across `test/unit/test_probe_server.py` and `test/unit/test_telemetry_metrics.py`.
@@ -74,7 +81,6 @@
     - `test/unit/test_telemetry_metrics.py`: Asserts all 8 mandatory Prometheus metrics and alert expressions conform to specifications.
     - Telemetry extension: Registered `doc_ai_activity_failures_total` counter in `internal/server/probe_server.py`.
 
-
 - **Phase 3: Dedicated Audio Pipeline & Speaker Diarization (Completed)**:
   - **Audio Models & Data Structures** (`internal/audio/models.py`): Defined `WordTiming`, `RawWhisperSegment`, `SpeakerTurn`, and `AlignedTranscriptSegment` maintaining strict absolute timeline mapping.
   - **Faster-Whisper Large-v3 Speech-to-Text Engine** (`internal/audio/asr/whisper_engine.py`): High-throughput CTranslate2 runner with word-level timestamps, cooperative cancellation (`threading.Event`), progressive interval yielding, mid-window offset resumption skipping audio prior to `start_from_offset`, and native/mock fallback execution.
@@ -89,9 +95,11 @@
   - Installed and configured **Ruff** for linting, formatting, and import sorting in `pyproject.toml`.
   - Configured `mypy` strict typing settings and `pytest` paths.
   - Setup `.gitignore` excluding `tasks/`, binary checkpoints, Parquet slices, and virtual environments.
+
 - **CI/CD Workflows**:
   - Created `.github/workflows/ci.yml` (linting, proto checking, tests, Helm lint, and Docker smoke build).
   - Created `.github/workflows/docker-publish.yml` (multi-image build & push for decoupled workers).
+
 - **Architecture & AI Rules**:
   - Synchronized `.ai/` documentation with `tasks/RAG Document AI Worker Implementation Plan.pdf` and `Production Grade Backend Concepts.pdf`.
   - Created `.ai/doc-api.md` covering Temporal activities, S3 Parquet paths, and gRPC Protobuf contracts.
@@ -155,4 +163,3 @@
   - Synchronized `.ai/doc-api.md` with updated `AudioHeartbeatDetails` schema.
   - Resolved CI pytest collection failure by adding `httpx>=0.27.0` and `httpx2>=0.1.0` to `[project.optional-dependencies] dev` in `pyproject.toml` to support Starlette's `TestClient`.
   - Configured `GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}` in `.github/workflows/ci.yml` secret-scan step to comply with Gitleaks Action v2 licensing requirement for the `Gemejime` GitHub Organization.
-
