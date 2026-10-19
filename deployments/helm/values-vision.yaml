@@ -11,6 +11,13 @@ image:
 
 environment: "production"
 
+# Load environment variables directly from Kubernetes Secrets or ConfigMaps (e.g. created via --from-env-file=.env)
+envFrom: []
+  # - secretRef:
+  #     name: doc-ai-env
+  # - configMapRef:
+  #     name: doc-ai-config
+
 env:
   - name: ENVIRONMENT
     value: "production"
@@ -20,10 +27,16 @@ env:
     value: "default"
   - name: VISION_TASK_QUEUE
     value: "doc-ai-vision-queue"
+  - name: CHUNK_SERVICE_ENDPOINT
+    value: "rag-chunk-lifecycle-service.default.svc.cluster.local:50051"
+  - name: AWS_REGION
+    value: "us-east-1"
   - name: PROBE_PORT
     value: "8080"
   - name: PROBE_HOST
     value: "0.0.0.0"
+  - name: PPOCR_HOME
+    value: "/tmp/.paddleocr"
   - name: LD_PRELOAD
     value: "/usr/lib/libjemalloc.so"
   - name: PYTORCH_CUDA_ALLOC_CONF

@@ -16,7 +16,7 @@ class WorkerSettings(BaseSettings):
     """Runtime configuration for rag-document-ai-worker compute pools."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.getenv("ENV_FILE", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -69,6 +69,10 @@ class WorkerSettings(BaseSettings):
     WHISPER_CACHE_DIR: str = Field(
         default="/models/cache/whisper",
         description="Faster-Whisper model cache directory",
+    )
+    PPOCR_HOME: str = Field(
+        default="/tmp/.paddleocr",
+        description="PaddleOCR model artifacts directory (writable in read-only containers)",
     )
     HEARTBEAT_INTERVAL_SECONDS: float = Field(
         default=10.0,
@@ -212,11 +216,16 @@ def configure_logging(custom_settings: WorkerSettings | None = None) -> None:
     """Configure structured JSON logging for production or console for development."""
     cfg = custom_settings or settings
 
-    # Propagate model cache environment variables to runtime libraries
+    # Propagate model cache and cloud environment variables to runtime libraries
     os.environ["HF_HOME"] = cfg.HF_HOME
     os.environ["TORCH_HOME"] = cfg.TORCH_HOME
     os.environ["DOCLING_CACHE_DIR"] = cfg.DOCLING_CACHE_DIR
     os.environ["WHISPER_CACHE_DIR"] = cfg.WHISPER_CACHE_DIR
+    os.environ["PPOCR_HOME"] = cfg.PPOCR_HOME
+    os.environ["AWS_REGION"] = cfg.AWS_REGION
+    os.environ["AWS_DEFAULT_REGION"] = cfg.AWS_REGION
+    if cfg.S3_ENDPOINT_URL:
+        os.environ["S3_ENDPOINT_URL"] = cfg.S3_ENDPOINT_URL
     if cfg.HF_TOKEN:
         os.environ["HF_TOKEN"] = cfg.HF_TOKEN
 

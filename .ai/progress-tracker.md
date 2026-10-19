@@ -173,3 +173,19 @@
   - Explicitly integrated `CHUNK_SERVICE_ENDPOINT` into `WorkerSettings` (`internal/config/settings.py`) and wired as default target endpoint in `ChunkServiceClient` (`internal/transport/grpc/chunk_client.py`).
   - Patched `activity.heartbeat` in chaos recovery test suite (`test/chaos/test_checkpoint_chaos.py`) ensuring clean long-duration activity tests without activity context errors.
   - Fully synchronized `.ai/doc-api.md` Section 8 and `README.md` key environment variable reference tables.
+- **Main Branch Merge & Conflict Resolution**:
+  - Merged latest updates from `origin/main` (commit `284661f`: `.github/workflows` cleanup delegating to `rag-document-ai-worker`).
+  - Resolved modify/delete conflicts for `.github/workflows/ci.yml` and `.github/workflows/docker-publish.yml` by preserving the updated CI/CD definitions from the feature branch.
+  - Verified pre-commit validation checklist: Ruff lint/format clean, Mypy strict type checking clean (65 files), and 72/72 unit and integration tests passing.
+- **Production Environment Variables & Helm `.env` Compatibility**:
+  - Expanded and annotated `.env.example` with comprehensive documentation and production instructions, explicitly highlighting affected variables (`TEMPORAL_HOST`, `TEMPORAL_NAMESPACE`, `CHUNK_SERVICE_ENDPOINT`, `HF_TOKEN`, `AWS_REGION`, `S3_ENDPOINT_URL`, `PPOCR_HOME`).
+  - Added `envFrom` support to Helm deployment template (`deployments/helm/templates/deployment.yaml`) allowing pods to directly source environment variables from `.env`-backed Kubernetes Secrets and ConfigMaps.
+  - Synchronized `values.yaml`, `values-vision.yaml`, and `values-audio.yaml` with missing variables (`CHUNK_SERVICE_ENDPOINT`, `AWS_REGION`, `HF_TOKEN`, `PPOCR_HOME`) and `envFrom` stubs.
+  - Added `PPOCR_HOME` to `WorkerSettings` and propagated it alongside `AWS_REGION` and `S3_ENDPOINT_URL` to `os.environ` in `internal/config/settings.py`.
+  - Updated `.env.prod` with corrected Kubernetes service FQDN for chunk service (`rag-chunk-lifecycle-service.default.svc.cluster.local:50051`).
+  - Synchronized `.ai/doc-api.md` Section 8 to maintain zero-drift specification.
+- **Review Finding Verification & Quality Hardening**:
+  - `test/unit/test_settings.py`: Retained `_env_file=None` in `test_worker_settings_defaults()` to guard against unintended `.env` file ingestion during default checks, while adding a documented `# type: ignore[call-arg]` suppression to satisfy strict Mypy against `pydantic-settings` runtime constructor keywords.
+  - `deployments/helm/values-audio.yaml`: Removed explicit empty `HF_TOKEN` as well as redundant `CHUNK_SERVICE_ENDPOINT` and `AWS_REGION` entries under `env:` so that values injected via `envFrom` (or falling back to `WorkerSettings` defaults) are not overridden.
+  - Evaluated PaddleOCR review finding against `internal/config/settings.py`: Skipped modifications since PaddleOCR is configured via `PPOCR_HOME` environment variable (set to `/tmp/.paddleocr` in `configure_logging()`) and explicit directory parameters would disrupt PaddleOCR's automated model download routines.
+  - Verified 100% clean check suite: Ruff lint/format clean, strict Mypy zero errors (65 files), and all 72/72 unit and integration tests passing.

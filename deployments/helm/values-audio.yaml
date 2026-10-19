@@ -11,6 +11,13 @@ image:
 
 environment: "production"
 
+# Load environment variables directly from Kubernetes Secrets or ConfigMaps (e.g. created via --from-env-file=.env)
+envFrom: []
+  # - secretRef:
+  #     name: doc-ai-env
+  # - configMapRef:
+  #     name: doc-ai-config
+
 env:
   - name: ENVIRONMENT
     value: "production"
