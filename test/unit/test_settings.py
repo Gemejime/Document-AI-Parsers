@@ -13,7 +13,9 @@ from internal.config.settings import (
 
 def test_worker_settings_defaults() -> None:
     """Verify default values comply with production architecture requirements."""
-    cfg = WorkerSettings(_env_file=None)
+    # Retain _env_file=None to prevent loading local .env during default testing;
+    # narrowly suppress Pydantic mypy call-arg warning for pydantic-settings runtime keyword.
+    cfg = WorkerSettings(_env_file=None)  # type: ignore[call-arg]
     assert cfg.ENVIRONMENT == "development"
     assert cfg.TEMPORAL_HOST == "localhost:7233"
     assert cfg.TEMPORAL_NAMESPACE == "default"
