@@ -184,3 +184,8 @@
   - Added `PPOCR_HOME` to `WorkerSettings` and propagated it alongside `AWS_REGION` and `S3_ENDPOINT_URL` to `os.environ` in `internal/config/settings.py`.
   - Updated `.env.prod` with corrected Kubernetes service FQDN for chunk service (`rag-chunk-lifecycle-service.default.svc.cluster.local:50051`).
   - Synchronized `.ai/doc-api.md` Section 8 to maintain zero-drift specification.
+- **Review Finding Verification & Quality Hardening**:
+  - `test/unit/test_settings.py`: Retained `_env_file=None` in `test_worker_settings_defaults()` to guard against unintended `.env` file ingestion during default checks, while adding a documented `# type: ignore[call-arg]` suppression to satisfy strict Mypy against `pydantic-settings` runtime constructor keywords.
+  - `deployments/helm/values-audio.yaml`: Removed explicit empty `HF_TOKEN` as well as redundant `CHUNK_SERVICE_ENDPOINT` and `AWS_REGION` entries under `env:` so that values injected via `envFrom` (or falling back to `WorkerSettings` defaults) are not overridden.
+  - Evaluated PaddleOCR review finding against `internal/config/settings.py`: Skipped modifications since PaddleOCR is configured via `PPOCR_HOME` environment variable (set to `/tmp/.paddleocr` in `configure_logging()`) and explicit directory parameters would disrupt PaddleOCR's automated model download routines.
+  - Verified 100% clean check suite: Ruff lint/format clean, strict Mypy zero errors (65 files), and all 72/72 unit and integration tests passing.
