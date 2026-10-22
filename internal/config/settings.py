@@ -96,13 +96,21 @@ class WorkerSettings(BaseSettings):
         default="snappy",
         description="Compression codec for PyArrow Parquet tables (snappy, zstd, gzip)",
     )
-    S3_ENDPOINT_URL: str | None = Field(
+    AWS_ENDPOINT_URL_S3: str | None = Field(
         default=None,
         description="Optional custom S3 endpoint URL (for LocalStack/MinIO testing)",
     )
     AWS_REGION: str = Field(
         default="us-east-1",
         description="AWS region for S3 bucket operations",
+    )
+    AWS_ACCESS_KEY_ID: str | None = Field(
+        default=None,
+        description="Optional AWS access key ID for S3 operations",
+    )
+    AWS_SECRET_ACCESS_KEY: str | None = Field(
+        default=None,
+        description="Optional AWS secret access key for S3 operations",
     )
     WHISPER_MODEL_SIZE: str = Field(
         default="large-v3",
@@ -154,6 +162,7 @@ _SENSITIVE_KEY_PATTERNS = [
     re.compile(r"secret", re.IGNORECASE),
     re.compile(r"password", re.IGNORECASE),
     re.compile(r"api[_-]?key", re.IGNORECASE),
+    re.compile(r"access[_-]?key", re.IGNORECASE),
     re.compile(r"x-amz-signature", re.IGNORECASE),
     re.compile(r"x-amz-credential", re.IGNORECASE),
     re.compile(r"x-amz-security-token", re.IGNORECASE),
@@ -224,8 +233,12 @@ def configure_logging(custom_settings: WorkerSettings | None = None) -> None:
     os.environ["PPOCR_HOME"] = cfg.PPOCR_HOME
     os.environ["AWS_REGION"] = cfg.AWS_REGION
     os.environ["AWS_DEFAULT_REGION"] = cfg.AWS_REGION
-    if cfg.S3_ENDPOINT_URL:
-        os.environ["S3_ENDPOINT_URL"] = cfg.S3_ENDPOINT_URL
+    if cfg.AWS_ACCESS_KEY_ID:
+        os.environ["AWS_ACCESS_KEY_ID"] = cfg.AWS_ACCESS_KEY_ID
+    if cfg.AWS_SECRET_ACCESS_KEY:
+        os.environ["AWS_SECRET_ACCESS_KEY"] = cfg.AWS_SECRET_ACCESS_KEY
+    if cfg.AWS_ENDPOINT_URL_S3:
+        os.environ["AWS_ENDPOINT_URL_S3"] = cfg.AWS_ENDPOINT_URL_S3
     if cfg.HF_TOKEN:
         os.environ["HF_TOKEN"] = cfg.HF_TOKEN
 

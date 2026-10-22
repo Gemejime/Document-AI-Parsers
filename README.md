@@ -46,10 +46,10 @@ Horizontally scalable, stateless multimodal document and audio AI parser worker 
 
 To eliminate VRAM contention, memory leaks, and dependency conflicts between CUDA vision kernels and audio speech models, the workers run as two completely independent compute pools:
 
-| Worker Pool | Container Image / Target | Task Queue | Primary Workload & Libraries |
-| :--- | :--- | :--- | :--- |
-| **Vision Worker** | `doc-ai-vision-worker` (`cmd/vision_worker`) | `doc-ai-vision-queue` | PDF slice fetching, Docling layout analysis, PaddleOCR secondary pass, PyArrow Parquet table export. |
-| **Audio Worker** | `doc-ai-audio-worker` (`cmd/audio_worker`) | `doc-ai-audio-queue` | RIFF audio validation, Faster-Whisper large-v3 ASR, PyAnnote 3.1 diarization, absolute timeline alignment, gRPC streaming. |
+| Worker Pool       | Container Image / Target                     | Task Queue            | Primary Workload & Libraries                                                                                               |
+| :---------------- | :------------------------------------------- | :-------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| **Vision Worker** | `doc-ai-vision-worker` (`cmd/vision_worker`) | `doc-ai-vision-queue` | PDF slice fetching, Docling layout analysis, PaddleOCR secondary pass, PyArrow Parquet table export.                       |
+| **Audio Worker**  | `doc-ai-audio-worker` (`cmd/audio_worker`)   | `doc-ai-audio-queue`  | RIFF audio validation, Faster-Whisper large-v3 ASR, PyAnnote 3.1 diarization, absolute timeline alignment, gRPC streaming. |
 
 ---
 
@@ -76,6 +76,7 @@ To eliminate VRAM contention, memory leaks, and dependency conflicts between CUD
 ```
 
 Each worker runs:
+
 - **Temporal Worker Loop**: Listens to its assigned task queue, offloads synchronous inference to worker threads via `asyncio.to_thread()`, and emits heartbeats every 10 seconds.
 - **FastAPI ASGI Server (port 8080)**: Serves OpenAPI 3.1 documentation (`/docs`, `/redoc`), Kubernetes liveness/readiness probes (`/healthz`, `/ready`), and Prometheus telemetry (`/metrics`).
 
@@ -87,36 +88,38 @@ The application loads runtime configuration from environment variables via **Pyd
 
 ### Key Environment Variables
 
-| Variable | Default Value | Description |
-| :--- | :--- | :--- |
-| **`ENVIRONMENT`** | `development` | Deployment environment: `development`, `staging`, or `production`. Controls log formatting. |
-| **`TEMPORAL_HOST`** | `localhost:7233` | Host and port for the Temporal frontend cluster service. |
-| **`TEMPORAL_NAMESPACE`** | `default` | Temporal namespace for workflow and activity execution. |
-| **`VISION_TASK_QUEUE`** | `doc-ai-vision-queue` | Task queue for vision and document layout activities. |
-| **`AUDIO_TASK_QUEUE`** | `doc-ai-audio-queue` | Task queue for audio transcription and diarization activities. |
-| **`PROBE_HOST`** | `0.0.0.0` | Bind interface for the FastAPI documentation and probe server. |
-| **`PROBE_PORT`** | `8080` | Port for the FastAPI probe server. |
-| **`MODEL_CACHE_DIR`** | `/models/cache` | Base directory for pre-baked model weights. |
-| **`HF_HOME`** | `/models/cache/huggingface` | Hugging Face cache directory for transformer weights and PyAnnote models. |
-| **`TORCH_HOME`** | `/models/cache/torch` | PyTorch cache directory. |
-| **`DOCLING_CACHE_DIR`** | `/models/cache/docling` | Docling layout model artifacts cache. |
-| **`WHISPER_CACHE_DIR`** | `/models/cache/whisper` | Faster-Whisper / CTranslate2 model cache. |
-| **`HF_TOKEN`** | *None* | Hugging Face user access token (required for gated `pyannote/speaker-diarization-3.1`). |
-| **`HEARTBEAT_INTERVAL_SECONDS`**| `10.0` | Interval in seconds between activity heartbeat checkpoints. |
-| **`HEARTBEAT_TIMEOUT_SECONDS`** | `30.0` | Heartbeat timeout buffer against GC or GPU batch jitter. |
-| **`OCR_CONFIDENCE_THRESHOLD`** | `0.80` | Confidence floor below which secondary PaddleOCR fallback is triggered. |
-| **`TABLE_PARQUET_COMPRESSION`** | `snappy` | Codec for Parquet table exports (`snappy`, `zstd`, `gzip`). |
-| **`S3_ENDPOINT_URL`** | *None* | Optional custom S3 endpoint URL (e.g. `http://localhost:9000` for MinIO). |
-| **`AWS_REGION`** | `us-east-1` | AWS region for S3 operations. |
-| **`WHISPER_MODEL_SIZE`** | `large-v3` | Model size variant: `tiny`, `base`, `small`, `medium`, `large-v3`. |
-| **`WHISPER_DEVICE`** | `cuda` | Inference device: `cuda` or `cpu`. |
-| **`WHISPER_COMPUTE_TYPE`** | `float16` | Precision / quantization: `float16`, `int8_float16`, `float32`. |
-| **`WHISPER_BEAM_SIZE`** | `5` | Beam search width for Whisper decoding. |
-| **`PYANNOTE_MODEL_ID`** | `pyannote/speaker-diarization-3.1` | Hugging Face model repository ID for PyAnnote speaker diarization. |
-| **`AUDIO_SAMPLE_RATE`** | `16000` | Native audio sample rate in Hz for Whisper and PyAnnote. |
-| **`AUDIO_PROGRESS_STEP_SECONDS`** | `30.0` | Progressive window interval chunk size in seconds. |
-| **`CHUNK_SERVICE_ENDPOINT`** | `rag-chunk-lifecycle-service:50051` | Downstream gRPC chunk lifecycle endpoint (`mock` for offline testing). |
-| **`VRAM_THRESHOLD_BYTES`** | `21474836480` | GPU VRAM threshold ceiling (20 GiB). |
+| Variable                          | Default Value                       | Description                                                                                 |
+| :-------------------------------- | :---------------------------------- | :------------------------------------------------------------------------------------------ |
+| **`ENVIRONMENT`**                 | `development`                       | Deployment environment: `development`, `staging`, or `production`. Controls log formatting. |
+| **`TEMPORAL_HOST`**               | `localhost:7233`                    | Host and port for the Temporal frontend cluster service.                                    |
+| **`TEMPORAL_NAMESPACE`**          | `default`                           | Temporal namespace for workflow and activity execution.                                     |
+| **`VISION_TASK_QUEUE`**           | `doc-ai-vision-queue`               | Task queue for vision and document layout activities.                                       |
+| **`AUDIO_TASK_QUEUE`**            | `doc-ai-audio-queue`                | Task queue for audio transcription and diarization activities.                              |
+| **`PROBE_HOST`**                  | `0.0.0.0`                           | Bind interface for the FastAPI documentation and probe server.                              |
+| **`PROBE_PORT`**                  | `8080`                              | Port for the FastAPI probe server.                                                          |
+| **`MODEL_CACHE_DIR`**             | `/models/cache`                     | Base directory for pre-baked model weights.                                                 |
+| **`HF_HOME`**                     | `/models/cache/huggingface`         | Hugging Face cache directory for transformer weights and PyAnnote models.                   |
+| **`TORCH_HOME`**                  | `/models/cache/torch`               | PyTorch cache directory.                                                                    |
+| **`DOCLING_CACHE_DIR`**           | `/models/cache/docling`             | Docling layout model artifacts cache.                                                       |
+| **`WHISPER_CACHE_DIR`**           | `/models/cache/whisper`             | Faster-Whisper / CTranslate2 model cache.                                                   |
+| **`HF_TOKEN`**                    | _None_                              | Hugging Face user access token (required for gated `pyannote/speaker-diarization-3.1`).     |
+| **`HEARTBEAT_INTERVAL_SECONDS`**  | `10.0`                              | Interval in seconds between activity heartbeat checkpoints.                                 |
+| **`HEARTBEAT_TIMEOUT_SECONDS`**   | `30.0`                              | Heartbeat timeout buffer against GC or GPU batch jitter.                                    |
+| **`OCR_CONFIDENCE_THRESHOLD`**    | `0.80`                              | Confidence floor below which secondary PaddleOCR fallback is triggered.                     |
+| **`TABLE_PARQUET_COMPRESSION`**   | `snappy`                            | Codec for Parquet table exports (`snappy`, `zstd`, `gzip`).                                 |
+| **`AWS_ENDPOINT_URL_S3`**         | _None_                              | Optional custom S3 endpoint URL (e.g. `http://localhost:9000` for MinIO).                   |
+| **`AWS_REGION`**                  | `us-east-1`                         | AWS region for S3 operations.                                                               |
+| **`AWS_ACCESS_KEY_ID`**           | _None_                              | Optional AWS access key ID for S3 operations.                                               |
+| **`AWS_SECRET_ACCESS_KEY`**       | _None_                              | Optional AWS secret access key for S3 operations.                                           |
+| **`WHISPER_MODEL_SIZE`**          | `large-v3`                          | Model size variant: `tiny`, `base`, `small`, `medium`, `large-v3`.                          |
+| **`WHISPER_DEVICE`**              | `cuda`                              | Inference device: `cuda` or `cpu`.                                                          |
+| **`WHISPER_COMPUTE_TYPE`**        | `float16`                           | Precision / quantization: `float16`, `int8_float16`, `float32`.                             |
+| **`WHISPER_BEAM_SIZE`**           | `5`                                 | Beam search width for Whisper decoding.                                                     |
+| **`PYANNOTE_MODEL_ID`**           | `pyannote/speaker-diarization-3.1`  | Hugging Face model repository ID for PyAnnote speaker diarization.                          |
+| **`AUDIO_SAMPLE_RATE`**           | `16000`                             | Native audio sample rate in Hz for Whisper and PyAnnote.                                    |
+| **`AUDIO_PROGRESS_STEP_SECONDS`** | `30.0`                              | Progressive window interval chunk size in seconds.                                          |
+| **`CHUNK_SERVICE_ENDPOINT`**      | `rag-chunk-lifecycle-service:50051` | Downstream gRPC chunk lifecycle endpoint (`mock` for offline testing).                      |
+| **`VRAM_THRESHOLD_BYTES`**        | `21474836480`                       | GPU VRAM threshold ceiling (20 GiB).                                                        |
 
 ---
 
@@ -133,16 +136,16 @@ Each worker exposes an internal HTTP server (default port `8080`) providing live
 
 ### Monitored Prometheus Metrics
 
-| Metric Name | Type | Description |
-| :--- | :--- | :--- |
-| `doc_ai_pages_processed_total` | Counter | Total document PDF pages processed by vision workers. |
-| `doc_ai_vision_tables_extracted_total` | Counter | Total tabular elements extracted and written to Parquet. |
-| `doc_ai_ocr_fallbacks_total` | Counter | Total low-confidence text blocks requiring secondary OCR pass. |
-| `doc_ai_audio_seconds_transcribed_total` | Counter | Cumulative audio duration (in seconds) transcribed. |
-| `doc_ai_diarization_speakers_detected` | Histogram | Distribution of distinct speaker clusters identified per window. |
-| `doc_ai_task_duration_seconds` | Histogram | End-to-end execution latency for Temporal activities. |
-| `doc_ai_vram_usage_bytes` | Gauge | Active CUDA VRAM allocation tracked across worker execution. |
-| `doc_ai_activity_failures_total` | Counter | Activity execution errors labeled by failure reason. |
+| Metric Name                              | Type      | Description                                                      |
+| :--------------------------------------- | :-------- | :--------------------------------------------------------------- |
+| `doc_ai_pages_processed_total`           | Counter   | Total document PDF pages processed by vision workers.            |
+| `doc_ai_vision_tables_extracted_total`   | Counter   | Total tabular elements extracted and written to Parquet.         |
+| `doc_ai_ocr_fallbacks_total`             | Counter   | Total low-confidence text blocks requiring secondary OCR pass.   |
+| `doc_ai_audio_seconds_transcribed_total` | Counter   | Cumulative audio duration (in seconds) transcribed.              |
+| `doc_ai_diarization_speakers_detected`   | Histogram | Distribution of distinct speaker clusters identified per window. |
+| `doc_ai_task_duration_seconds`           | Histogram | End-to-end execution latency for Temporal activities.            |
+| `doc_ai_vram_usage_bytes`                | Gauge     | Active CUDA VRAM allocation tracked across worker execution.     |
+| `doc_ai_activity_failures_total`         | Counter   | Activity execution errors labeled by failure reason.             |
 
 ---
 
@@ -200,11 +203,13 @@ pip install -e ".[audio]"    # For Faster-Whisper, PyAnnote, Torchaudio
 Workers run directly with default environment settings, or with custom variables exported in your shell:
 
 Start the **Vision Worker**:
+
 ```bash
 python -m cmd.vision_worker.main
 ```
 
 Start the **Audio Worker**:
+
 ```bash
 python -m cmd.audio_worker.main
 ```
@@ -233,6 +238,7 @@ python -m pytest test/chaos test/performance
 ```
 
 You can also use the included `Makefile`:
+
 ```bash
 make check   # Runs lint, typecheck, and unit/integration tests
 ```
@@ -272,6 +278,7 @@ helm upgrade --install doc-ai-audio deployments/helm \
 ### GitOps with ArgoCD
 
 ArgoCD manifests and ApplicationSets are located in `deployments/argocd/`:
+
 - `application-vision.yaml`: Declarative vision worker deployment with KEDA replica drift immunity.
 - `application-audio.yaml`: Declarative audio worker deployment.
 - `applicationset.yaml`: Multi-cluster matrix generator for staging and production environments.

@@ -3,6 +3,8 @@
 import os
 from unittest.mock import patch
 
+import pytest
+
 from internal.config.settings import (
     WorkerSettings,
     _scrub_value,
@@ -11,8 +13,10 @@ from internal.config.settings import (
 )
 
 
-def test_worker_settings_defaults() -> None:
+def test_worker_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify default values comply with production architecture requirements."""
+    monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
     # Retain _env_file=None to prevent loading local .env during default testing;
     # narrowly suppress Pydantic mypy call-arg warning for pydantic-settings runtime keyword.
     cfg = WorkerSettings(_env_file=None)  # type: ignore[call-arg]
@@ -30,6 +34,8 @@ def test_worker_settings_defaults() -> None:
     assert cfg.TORCH_HOME == "/models/cache/torch"
     assert cfg.CHUNK_SERVICE_ENDPOINT == "rag-chunk-lifecycle-service:50051"
     assert cfg.PPOCR_HOME == "/tmp/.paddleocr"
+    assert cfg.AWS_ACCESS_KEY_ID is None
+    assert cfg.AWS_SECRET_ACCESS_KEY is None
 
 
 def test_worker_settings_env_override() -> None:
@@ -41,6 +47,8 @@ def test_worker_settings_env_override() -> None:
             "TEMPORAL_HOST": "temporal.prod:7233",
             "PROBE_PORT": "9090",
             "HEARTBEAT_INTERVAL_SECONDS": "5.0",
+            "AWS_ACCESS_KEY_ID": "test-key-id",
+            "AWS_SECRET_ACCESS_KEY": "test-secret-key",
         },
     ):
         cfg = WorkerSettings()
@@ -48,6 +56,8 @@ def test_worker_settings_env_override() -> None:
         assert cfg.TEMPORAL_HOST == "temporal.prod:7233"
         assert cfg.PROBE_PORT == 9090
         assert cfg.HEARTBEAT_INTERVAL_SECONDS == 5.0
+        assert cfg.AWS_ACCESS_KEY_ID == "test-key-id"
+        assert cfg.AWS_SECRET_ACCESS_KEY == "test-secret-key"
 
 
 def test_secured_logging_redacts_auth_and_tokens() -> None:
@@ -56,6 +66,8 @@ def test_secured_logging_redacts_auth_and_tokens() -> None:
         "event": "user_action",
         "authorization": "Bearer super-secret-jwt-token",
         "api_key": "secret-12345",
+        "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
+        "aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         "nested": {
             "token": "my-access-token",
             "password": "plain-text-pwd",
@@ -66,6 +78,8 @@ def test_secured_logging_redacts_auth_and_tokens() -> None:
 
     assert filtered["authorization"] == "[REDACTED]"
     assert filtered["api_key"] == "[REDACTED]"
+    assert filtered["aws_access_key_id"] == "[REDACTED]"
+    assert filtered["aws_secret_access_key"] == "[REDACTED]"
     assert filtered["nested"]["token"] == "[REDACTED]"
     assert filtered["nested"]["password"] == "[REDACTED]"
 
@@ -134,3 +148,34 @@ def test_worker_settings_validation_constraints() -> None:
     # Invalid parquet compression codec
     with pytest.raises(ValidationError):
         WorkerSettings.model_validate({"TABLE_PARQUET_COMPRESSION": "invalid_codec"})
+
+
+def test_aws_credentials_propagation_and_s3_client() -> None:
+    """Verify AWS credentials propagate to environment and S3StorageClient builds kwargs."""
+    from internal.storage.s3_client import S3StorageClient
+
+    cfg = WorkerSettings(
+        AWS_ACCESS_KEY_ID="custom-key-id",
+        AWS_SECRET_ACCESS_KEY="custom-secret-key",
+        AWS_REGION="eu-west-1",
+        AWS_ENDPOINT_URL_S3="http://localhost:9000",
+    )
+
+    with patch.dict(os.environ):
+        configure_logging(cfg)
+
+        assert os.environ.get("AWS_ACCESS_KEY_ID") == "custom-key-id"
+        assert os.environ.get("AWS_SECRET_ACCESS_KEY") == "custom-secret-key"
+        assert os.environ.get("AWS_REGION") == "eu-west-1"
+
+    client = S3StorageClient(
+        endpoint_url=cfg.AWS_ENDPOINT_URL_S3,
+        region=cfg.AWS_REGION,
+        aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
+    )
+    kwargs = client.get_client_kwargs()
+    assert kwargs["endpoint_url"] == "http://localhost:9000"
+    assert kwargs["region_name"] == "eu-west-1"
+    assert kwargs["aws_access_key_id"] == "custom-key-id"
+    assert kwargs["aws_secret_access_key"] == "custom-secret-key"
