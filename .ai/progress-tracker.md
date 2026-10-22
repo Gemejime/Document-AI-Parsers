@@ -195,3 +195,8 @@
   - Added `aws_access_key_id` and `aws_secret_access_key` parameters and `get_client_kwargs()` helper to `S3StorageClient` (`internal/storage/s3_client.py`).
   - Added unit test coverage in `test/unit/test_settings.py` verifying defaults, environment overrides, log redaction, and `S3StorageClient` client kwargs.
   - Synchronized `.ai/doc-api.md` Section 8 and `README.md` key environment variable reference tables.
+- **Review Finding Hardening & Test Isolation**:
+  - `.env.example`: Unset space-filled values for `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` (setting to empty strings) and removed redundant `S3_ENDPOINT_URL`.
+  - `test/unit/test_settings.py`: Added `monkeypatch` fixture to `test_worker_settings_defaults()` to ensure tests pass independent of the host runner's environment variables.
+  - `test/unit/test_settings.py`: Wrapped `configure_logging(cfg)` in `patch.dict(os.environ)` to prevent environment variable mutations from leaking between test cases.
+
