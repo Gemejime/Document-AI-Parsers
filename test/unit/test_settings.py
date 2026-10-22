@@ -3,6 +3,8 @@
 import os
 from unittest.mock import patch
 
+import pytest
+
 from internal.config.settings import (
     WorkerSettings,
     _scrub_value,
@@ -11,8 +13,10 @@ from internal.config.settings import (
 )
 
 
-def test_worker_settings_defaults() -> None:
+def test_worker_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify default values comply with production architecture requirements."""
+    monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
     # Retain _env_file=None to prevent loading local .env during default testing;
     # narrowly suppress Pydantic mypy call-arg warning for pydantic-settings runtime keyword.
     cfg = WorkerSettings(_env_file=None)  # type: ignore[call-arg]
@@ -156,11 +160,13 @@ def test_aws_credentials_propagation_and_s3_client() -> None:
         AWS_REGION="eu-west-1",
         AWS_ENDPOINT_URL_S3="http://localhost:9000",
     )
-    configure_logging(cfg)
 
-    assert os.environ.get("AWS_ACCESS_KEY_ID") == "custom-key-id"
-    assert os.environ.get("AWS_SECRET_ACCESS_KEY") == "custom-secret-key"
-    assert os.environ.get("AWS_REGION") == "eu-west-1"
+    with patch.dict(os.environ):
+        configure_logging(cfg)
+
+        assert os.environ.get("AWS_ACCESS_KEY_ID") == "custom-key-id"
+        assert os.environ.get("AWS_SECRET_ACCESS_KEY") == "custom-secret-key"
+        assert os.environ.get("AWS_REGION") == "eu-west-1"
 
     client = S3StorageClient(
         endpoint_url=cfg.AWS_ENDPOINT_URL_S3,
