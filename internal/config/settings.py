@@ -96,7 +96,7 @@ class WorkerSettings(BaseSettings):
         default="snappy",
         description="Compression codec for PyArrow Parquet tables (snappy, zstd, gzip)",
     )
-    S3_ENDPOINT_URL: str | None = Field(
+    AWS_ENDPOINT_URL_S3: str | None = Field(
         default=None,
         description="Optional custom S3 endpoint URL (for LocalStack/MinIO testing)",
     )
@@ -237,8 +237,8 @@ def configure_logging(custom_settings: WorkerSettings | None = None) -> None:
         os.environ["AWS_ACCESS_KEY_ID"] = cfg.AWS_ACCESS_KEY_ID
     if cfg.AWS_SECRET_ACCESS_KEY:
         os.environ["AWS_SECRET_ACCESS_KEY"] = cfg.AWS_SECRET_ACCESS_KEY
-    if cfg.S3_ENDPOINT_URL:
-        os.environ["S3_ENDPOINT_URL"] = cfg.S3_ENDPOINT_URL
+    if cfg.AWS_ENDPOINT_URL_S3:
+        os.environ["AWS_ENDPOINT_URL_S3"] = cfg.AWS_ENDPOINT_URL_S3
     if cfg.HF_TOKEN:
         os.environ["HF_TOKEN"] = cfg.HF_TOKEN
 

@@ -178,10 +178,10 @@
   - Resolved modify/delete conflicts for `.github/workflows/ci.yml` and `.github/workflows/docker-publish.yml` by preserving the updated CI/CD definitions from the feature branch.
   - Verified pre-commit validation checklist: Ruff lint/format clean, Mypy strict type checking clean (65 files), and 72/72 unit and integration tests passing.
 - **Production Environment Variables & Helm `.env` Compatibility**:
-  - Expanded and annotated `.env.example` with comprehensive documentation and production instructions, explicitly highlighting affected variables (`TEMPORAL_HOST`, `TEMPORAL_NAMESPACE`, `CHUNK_SERVICE_ENDPOINT`, `HF_TOKEN`, `AWS_REGION`, `S3_ENDPOINT_URL`, `PPOCR_HOME`).
+  - Expanded and annotated `.env.example` with comprehensive documentation and production instructions, explicitly highlighting affected variables (`TEMPORAL_HOST`, `TEMPORAL_NAMESPACE`, `CHUNK_SERVICE_ENDPOINT`, `HF_TOKEN`, `AWS_REGION`, `AWS_ENDPOINT_URL_S3`, `PPOCR_HOME`).
   - Added `envFrom` support to Helm deployment template (`deployments/helm/templates/deployment.yaml`) allowing pods to directly source environment variables from `.env`-backed Kubernetes Secrets and ConfigMaps.
   - Synchronized `values.yaml`, `values-vision.yaml`, and `values-audio.yaml` with missing variables (`CHUNK_SERVICE_ENDPOINT`, `AWS_REGION`, `HF_TOKEN`, `PPOCR_HOME`) and `envFrom` stubs.
-  - Added `PPOCR_HOME` to `WorkerSettings` and propagated it alongside `AWS_REGION` and `S3_ENDPOINT_URL` to `os.environ` in `internal/config/settings.py`.
+  - Added `PPOCR_HOME` to `WorkerSettings` and propagated it alongside `AWS_REGION` and `AWS_ENDPOINT_URL_S3` to `os.environ` in `internal/config/settings.py`.
   - Updated `.env.prod` with corrected Kubernetes service FQDN for chunk service (`rag-chunk-lifecycle-service.default.svc.cluster.local:50051`).
   - Synchronized `.ai/doc-api.md` Section 8 to maintain zero-drift specification.
 - **Review Finding Verification & Quality Hardening**:
@@ -195,4 +195,3 @@
   - Added `aws_access_key_id` and `aws_secret_access_key` parameters and `get_client_kwargs()` helper to `S3StorageClient` (`internal/storage/s3_client.py`).
   - Added unit test coverage in `test/unit/test_settings.py` verifying defaults, environment overrides, log redaction, and `S3StorageClient` client kwargs.
   - Synchronized `.ai/doc-api.md` Section 8 and `README.md` key environment variable reference tables.
-

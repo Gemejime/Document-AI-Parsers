@@ -3,6 +3,7 @@
 ## 1. Executive Summary & Objective
 
 Phase 1 establishes the core runtime decoupling, containerization environments, and asynchronous Temporal safety primitives for the `rag-document-ai-worker` microservice, strictly adhering to:
+
 - [`tasks/RAG Document AI Worker Implementation Plan.pdf`](tasks/RAG%20Document%20AI%20Worker%20Implementation%20Plan.pdf)
 - [`tasks/Go and Python Microservices Architecture.pdf`](tasks/Go%20and%20Python%20Microservices%20Architecture.pdf)
 - [`tasks/Production-Grade Multimodal RAG Architectural Specification.pdf`](tasks/Production-Grade%20Multimodal%20RAG%20Architectural%20Specification.pdf)
@@ -14,6 +15,7 @@ Phase 1 establishes the core runtime decoupling, containerization environments, 
 - [`.ai/code-standards.md`](.ai/code-standards.md)
 
 ### Core Deliverables for Phase 1
+
 1. **Container & Runtime Isolation**:
    - `deployments/docker/Dockerfile.vision`: CUDA 12.2+ runtime, Docling dependencies, `libjemalloc2` (with symlink `/usr/lib/libjemalloc.so`), non-root UID 1000, read-only cache mount `/models/cache/`, preconfigured cache variables (`HF_HOME`, `TORCH_HOME`, `DOCLING_CACHE_DIR`), allocator tuning (`PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128`), and thread limits (`OMP_NUM_THREADS=2`, `OPENBLAS_NUM_THREADS=2`).
    - `deployments/docker/Dockerfile.audio`: CUDA 12.2+ runtime, Faster-Whisper and PyAnnote dependencies, `libjemalloc2`, non-root UID 1000, read-only cache mount `/models/cache/`, preconfigured cache variables (`HF_HOME`, `TORCH_HOME`, `WHISPER_CACHE_DIR`), allocator tuning, and thread limits.
@@ -106,6 +108,7 @@ rag-document-ai-worker/
 ## 3. Detailed Component Designs
 
 ### 3.1. Settings & Configuration (`internal/config/settings.py`)
+
 - Pydantic Settings model `WorkerSettings` reading from environment variables:
   - `ENV` / `ENVIRONMENT`: `development` | `staging` | `production`.
   - `TEMPORAL_HOST`: default `localhost:7233`.
@@ -119,7 +122,7 @@ rag-document-ai-worker/
   - `HEARTBEAT_INTERVAL_SECONDS`: `10.0`.
   - `HEARTBEAT_TIMEOUT_SECONDS`: `30.0`.
   - `VRAM_THRESHOLD_BYTES`: `20 * 1024 * 1024 * 1024` (20 GiB).
-  - `S3_ENDPOINT_URL`: Optional custom endpoint for MinIO/LocalStack in testing.
+  - `AWS_ENDPOINT_URL_S3`: Optional custom endpoint for MinIO/LocalStack in testing.
 - Structured logging configuration via `structlog`:
   - JSON format in production, console renderer in development.
   - Contextual log enrichment: binds `tenant_id`, `document_id`, `task_queue`, `activity_id`, `page_number`.
@@ -127,6 +130,7 @@ rag-document-ai-worker/
   - Invariant: Zero customer document text, OCR blocks, or speech transcripts logged.
 
 ### 3.2. Probe Server & OpenAPI 3.1 (`internal/server/probe_server.py`)
+
 - FastAPI ASGI application configured with:
   - Title: `"RAG Document AI Worker API"`, Version: `"0.1.0"`.
   - `GET /docs`: Swagger UI.
@@ -145,6 +149,7 @@ rag-document-ai-worker/
   - `doc_ai_cuda_oom_errors_total` (Counter)
 
 ### 3.3. Thread-Safe Heartbeat Runner & Cooperative Cancellation (`internal/temporal/common/heartbeat_runner.py`)
+
 - Asynchronous context manager / background task:
   - Runs in the main asyncio event loop while long-running inference runs in a worker thread via `asyncio.to_thread()`.
   - Maintains a thread-safe `ProgressTracker` updated by the background thread.
@@ -154,6 +159,7 @@ rag-document-ai-worker/
   - Gracefully stops on activity completion or handles `temporalio.exceptions.ActivityCancelledError`.
 
 ### 3.4. Temporal Activity Framework & Resumption
+
 - Models:
   - `ParseDocumentSliceInput` & `ParseDocumentSliceOutput`.
   - `TranscribeAudioWindowInput` & `TranscribeAudioWindowOutput`.
@@ -164,6 +170,7 @@ rag-document-ai-worker/
   - Truncated PDF slices or malformed audio files trigger `ApplicationError("Corrupted input slice", type="CORRUPT_INPUT_QUARANTINE", non_retryable=True)` preventing retry loops.
 
 ### 3.5. Coordinate Normalization Math (`internal/vision/coordinates.py`)
+
 - `normalize_bbox(x1: float, y1: float, x2: float, y2: float, width: float, height: float, origin: str = "top-left") -> tuple[float, float, float, float]`:
   - Validates positive width and height.
   - Converts arbitrary resolutions (72 DPI vector PDF vs 300 DPI OCR bitmap) to normalized floats $[0.0, 1.0]$.
@@ -173,6 +180,7 @@ rag-document-ai-worker/
   - Enforces $x_1 \le x_2$ and $y_1 \le y_2$ with bounding box clamping to $[0.0, 1.0]$.
 
 ### 3.6. Worker Process Bootstrap (`cmd/vision_worker/main.py` & `cmd/audio_worker/main.py`)
+
 - Single process co-hosting:
   - Initializes settings, structured logging, and Prometheus registry.
   - Connects to Temporal client (`temporalio.client.Client.connect(settings.TEMPORAL_HOST, namespace=settings.TEMPORAL_NAMESPACE)`).
@@ -183,6 +191,7 @@ rag-document-ai-worker/
   - Handles `SIGTERM` and `SIGINT` signals for graceful teardown.
 
 ### 3.7. Container & Kubernetes Packaging (`deployments/`)
+
 - Multi-stage Dockerfiles leveraging Ubuntu 22.04 + CUDA 12.2 runtime:
   - System dependencies: `libjemalloc2`, `poppler-utils` (vision), `libsndfile1`, `ffmpeg` (audio).
   - Canonical symlink: `ln -s /usr/lib/*-linux-gnu/libjemalloc.so.2 /usr/lib/libjemalloc.so`.
@@ -227,6 +236,7 @@ rag-document-ai-worker/
 ## 5. Implementation Execution Steps
 
 Execution will proceed in strict order:
+
 1. **Core Settings & Structured Logging**: Implement `internal/config/settings.py` with redaction filters and cache directories.
 2. **FastAPI Probe & Documentation Server**: Implement `internal/server/probe_server.py` exposing OpenAPI 3.1 endpoints, health probes, and Prometheus metrics.
 3. **Coordinate Normalization Math**: Implement `internal/vision/coordinates.py` with multi-origin and clamping support.

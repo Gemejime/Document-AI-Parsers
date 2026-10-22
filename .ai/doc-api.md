@@ -468,37 +468,36 @@ The worker exposes 8 operational metrics at `GET /metrics`:
 
 Runtime configuration is managed through Pydantic `WorkerSettings` (`internal.config.settings`). Configuration is loaded from environment variables or container environments with production-ready built-in defaults:
 
-| Variable | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `ENVIRONMENT` | string | `development` | Runtime environment (`development`, `staging`, `production`). Controls JSON structured vs console logs. |
-| `TEMPORAL_HOST` | string | `localhost:7233` | Host:port endpoint of the Temporal frontend cluster service. |
-| `TEMPORAL_NAMESPACE` | string | `default` | Target Temporal namespace for workflow and activity execution. |
-| `VISION_TASK_QUEUE` | string | `doc-ai-vision-queue` | Temporal task queue polled by `doc-ai-vision-worker`. |
-| `AUDIO_TASK_QUEUE` | string | `doc-ai-audio-queue` | Temporal task queue polled by `doc-ai-audio-worker`. |
-| `PROBE_HOST` | string | `0.0.0.0` | Bind IP for internal FastAPI probe, documentation, and metrics server. |
-| `PROBE_PORT` | integer | `8080` | Port for internal FastAPI probe server (`/docs`, `/redoc`, `/healthz`, `/ready`, `/metrics`). |
-| `MODEL_CACHE_DIR` | string | `/models/cache` | Base directory for pre-baked model weights. |
-| `HF_HOME` | string | `/models/cache/huggingface` | Hugging Face cache directory for transformers and diarization models. |
-| `TORCH_HOME` | string | `/models/cache/torch` | PyTorch cache directory. |
-| `DOCLING_CACHE_DIR` | string | `/models/cache/docling` | Docling layout model artifacts cache. |
-| `WHISPER_CACHE_DIR` | string | `/models/cache/whisper` | Faster-Whisper / CTranslate2 model cache. |
-| `PPOCR_HOME` | string | `/tmp/.paddleocr` | PaddleOCR model cache directory (writable directory for read-only containers). |
-| `HF_TOKEN` | string / null | `None` | Hugging Face user access token (required for gated `pyannote/speaker-diarization-3.1`). |
-| `HEARTBEAT_INTERVAL_SECONDS` | float | `10.0` | Frequency in seconds of active Temporal activity progress heartbeats. |
-| `HEARTBEAT_TIMEOUT_SECONDS` | float | `30.0` | Heartbeat timeout buffer guarding against GC / GPU batch execution jitter. |
-| `OCR_CONFIDENCE_THRESHOLD` | float | `0.80` | Confidence floor below which secondary PaddleOCR fallback is triggered. |
-| `TABLE_PARQUET_COMPRESSION` | string | `snappy` | Codec for Parquet table exports (`snappy`, `zstd`, `gzip`). |
-| `S3_ENDPOINT_URL` | string / null | `None` | Custom S3 endpoint URL (e.g. MinIO / LocalStack). |
-| `AWS_REGION` | string | `us-east-1` | AWS region for S3 bucket operations. |
-| `AWS_ACCESS_KEY_ID` | string / null | `None` | Optional AWS access key ID for S3 operations. |
-| `AWS_SECRET_ACCESS_KEY` | string / null | `None` | Optional AWS secret access key for S3 operations. |
-| `WHISPER_MODEL_SIZE` | string | `large-v3` | Faster-Whisper variant (`tiny`, `base`, `small`, `medium`, `large-v3`). |
-| `WHISPER_DEVICE` | string | `cuda` | Inference device (`cuda` or `cpu`). |
-| `WHISPER_COMPUTE_TYPE` | string | `float16` | Precision / quantization (`float16`, `int8_float16`, `float32`). |
-| `WHISPER_BEAM_SIZE` | integer | `5` | Beam search width for Whisper decoding. |
-| `PYANNOTE_MODEL_ID` | string | `pyannote/speaker-diarization-3.1` | Hugging Face model repository ID for PyAnnote speaker diarization. |
-| `AUDIO_SAMPLE_RATE` | integer | `16000` | Native audio sample rate in Hz for Whisper and PyAnnote. |
-| `AUDIO_PROGRESS_STEP_SECONDS` | float | `30.0` | Progressive audio window interval chunk size in seconds. |
-| `CHUNK_SERVICE_ENDPOINT` | string | `rag-chunk-lifecycle-service:50051` | Downstream gRPC chunk service endpoint (`mock` for local/offline testing). |
-| `VRAM_THRESHOLD_BYTES` | integer | `21474836480` | GPU VRAM threshold ceiling (20 GiB). |
-
+| Variable                      | Type          | Default                             | Description                                                                                             |
+| :---------------------------- | :------------ | :---------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| `ENVIRONMENT`                 | string        | `development`                       | Runtime environment (`development`, `staging`, `production`). Controls JSON structured vs console logs. |
+| `TEMPORAL_HOST`               | string        | `localhost:7233`                    | Host:port endpoint of the Temporal frontend cluster service.                                            |
+| `TEMPORAL_NAMESPACE`          | string        | `default`                           | Target Temporal namespace for workflow and activity execution.                                          |
+| `VISION_TASK_QUEUE`           | string        | `doc-ai-vision-queue`               | Temporal task queue polled by `doc-ai-vision-worker`.                                                   |
+| `AUDIO_TASK_QUEUE`            | string        | `doc-ai-audio-queue`                | Temporal task queue polled by `doc-ai-audio-worker`.                                                    |
+| `PROBE_HOST`                  | string        | `0.0.0.0`                           | Bind IP for internal FastAPI probe, documentation, and metrics server.                                  |
+| `PROBE_PORT`                  | integer       | `8080`                              | Port for internal FastAPI probe server (`/docs`, `/redoc`, `/healthz`, `/ready`, `/metrics`).           |
+| `MODEL_CACHE_DIR`             | string        | `/models/cache`                     | Base directory for pre-baked model weights.                                                             |
+| `HF_HOME`                     | string        | `/models/cache/huggingface`         | Hugging Face cache directory for transformers and diarization models.                                   |
+| `TORCH_HOME`                  | string        | `/models/cache/torch`               | PyTorch cache directory.                                                                                |
+| `DOCLING_CACHE_DIR`           | string        | `/models/cache/docling`             | Docling layout model artifacts cache.                                                                   |
+| `WHISPER_CACHE_DIR`           | string        | `/models/cache/whisper`             | Faster-Whisper / CTranslate2 model cache.                                                               |
+| `PPOCR_HOME`                  | string        | `/tmp/.paddleocr`                   | PaddleOCR model cache directory (writable directory for read-only containers).                          |
+| `HF_TOKEN`                    | string / null | `None`                              | Hugging Face user access token (required for gated `pyannote/speaker-diarization-3.1`).                 |
+| `HEARTBEAT_INTERVAL_SECONDS`  | float         | `10.0`                              | Frequency in seconds of active Temporal activity progress heartbeats.                                   |
+| `HEARTBEAT_TIMEOUT_SECONDS`   | float         | `30.0`                              | Heartbeat timeout buffer guarding against GC / GPU batch execution jitter.                              |
+| `OCR_CONFIDENCE_THRESHOLD`    | float         | `0.80`                              | Confidence floor below which secondary PaddleOCR fallback is triggered.                                 |
+| `TABLE_PARQUET_COMPRESSION`   | string        | `snappy`                            | Codec for Parquet table exports (`snappy`, `zstd`, `gzip`).                                             |
+| `AWS_ENDPOINT_URL_S3`         | string / null | `None`                              | Custom S3 endpoint URL (e.g. MinIO / LocalStack).                                                       |
+| `AWS_REGION`                  | string        | `us-east-1`                         | AWS region for S3 bucket operations.                                                                    |
+| `AWS_ACCESS_KEY_ID`           | string / null | `None`                              | Optional AWS access key ID for S3 operations.                                                           |
+| `AWS_SECRET_ACCESS_KEY`       | string / null | `None`                              | Optional AWS secret access key for S3 operations.                                                       |
+| `WHISPER_MODEL_SIZE`          | string        | `large-v3`                          | Faster-Whisper variant (`tiny`, `base`, `small`, `medium`, `large-v3`).                                 |
+| `WHISPER_DEVICE`              | string        | `cuda`                              | Inference device (`cuda` or `cpu`).                                                                     |
+| `WHISPER_COMPUTE_TYPE`        | string        | `float16`                           | Precision / quantization (`float16`, `int8_float16`, `float32`).                                        |
+| `WHISPER_BEAM_SIZE`           | integer       | `5`                                 | Beam search width for Whisper decoding.                                                                 |
+| `PYANNOTE_MODEL_ID`           | string        | `pyannote/speaker-diarization-3.1`  | Hugging Face model repository ID for PyAnnote speaker diarization.                                      |
+| `AUDIO_SAMPLE_RATE`           | integer       | `16000`                             | Native audio sample rate in Hz for Whisper and PyAnnote.                                                |
+| `AUDIO_PROGRESS_STEP_SECONDS` | float         | `30.0`                              | Progressive audio window interval chunk size in seconds.                                                |
+| `CHUNK_SERVICE_ENDPOINT`      | string        | `rag-chunk-lifecycle-service:50051` | Downstream gRPC chunk service endpoint (`mock` for local/offline testing).                              |
+| `VRAM_THRESHOLD_BYTES`        | integer       | `21474836480`                       | GPU VRAM threshold ceiling (20 GiB).                                                                    |

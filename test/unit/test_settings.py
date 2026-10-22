@@ -154,7 +154,7 @@ def test_aws_credentials_propagation_and_s3_client() -> None:
         AWS_ACCESS_KEY_ID="custom-key-id",
         AWS_SECRET_ACCESS_KEY="custom-secret-key",
         AWS_REGION="eu-west-1",
-        S3_ENDPOINT_URL="http://localhost:9000",
+        AWS_ENDPOINT_URL_S3="http://localhost:9000",
     )
     configure_logging(cfg)
 
@@ -163,7 +163,7 @@ def test_aws_credentials_propagation_and_s3_client() -> None:
     assert os.environ.get("AWS_REGION") == "eu-west-1"
 
     client = S3StorageClient(
-        endpoint_url=cfg.S3_ENDPOINT_URL,
+        endpoint_url=cfg.AWS_ENDPOINT_URL_S3,
         region=cfg.AWS_REGION,
         aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,

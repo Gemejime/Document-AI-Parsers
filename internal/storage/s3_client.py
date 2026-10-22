@@ -41,7 +41,7 @@ class S3StorageClient:
         aws_access_key_id: str | None = None,
         aws_secret_access_key: str | None = None,
     ) -> None:
-        self.endpoint_url = endpoint_url or settings.S3_ENDPOINT_URL
+        self.endpoint_url = endpoint_url or settings.AWS_ENDPOINT_URL_S3
         self.region = region or settings.AWS_REGION
         self.aws_access_key_id = aws_access_key_id or settings.AWS_ACCESS_KEY_ID
         self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
