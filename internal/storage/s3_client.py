@@ -34,9 +34,28 @@ class S3ClientProtocol(Protocol):
 class S3StorageClient:
     """Production S3 client wrapper supporting mock fallbacks in Phase 1."""
 
-    def __init__(self, endpoint_url: str | None = None, region: str | None = None) -> None:
+    def __init__(
+        self,
+        endpoint_url: str | None = None,
+        region: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+    ) -> None:
         self.endpoint_url = endpoint_url or settings.S3_ENDPOINT_URL
         self.region = region or settings.AWS_REGION
+        self.aws_access_key_id = aws_access_key_id or settings.AWS_ACCESS_KEY_ID
+        self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
+
+    def get_client_kwargs(self) -> dict[str, str]:
+        """Return resolved keyword arguments for initializing an aiobotocore / boto3 client."""
+        kwargs: dict[str, str] = {"region_name": self.region}
+        if self.endpoint_url:
+            kwargs["endpoint_url"] = self.endpoint_url
+        if self.aws_access_key_id:
+            kwargs["aws_access_key_id"] = self.aws_access_key_id
+        if self.aws_secret_access_key:
+            kwargs["aws_secret_access_key"] = self.aws_secret_access_key
+        return kwargs
 
     async def fetch_slice(self, bucket: str, key: str, destination_path: str) -> str:
         """Fetch slice object from S3.
