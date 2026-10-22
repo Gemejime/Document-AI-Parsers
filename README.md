@@ -108,6 +108,8 @@ The application loads runtime configuration from environment variables via **Pyd
 | **`TABLE_PARQUET_COMPRESSION`** | `snappy` | Codec for Parquet table exports (`snappy`, `zstd`, `gzip`). |
 | **`S3_ENDPOINT_URL`** | *None* | Optional custom S3 endpoint URL (e.g. `http://localhost:9000` for MinIO). |
 | **`AWS_REGION`** | `us-east-1` | AWS region for S3 operations. |
+| **`AWS_ACCESS_KEY_ID`** | *None* | Optional AWS access key ID for S3 operations. |
+| **`AWS_SECRET_ACCESS_KEY`** | *None* | Optional AWS secret access key for S3 operations. |
 | **`WHISPER_MODEL_SIZE`** | `large-v3` | Model size variant: `tiny`, `base`, `small`, `medium`, `large-v3`. |
 | **`WHISPER_DEVICE`** | `cuda` | Inference device: `cuda` or `cpu`. |
 | **`WHISPER_COMPUTE_TYPE`** | `float16` | Precision / quantization: `float16`, `int8_float16`, `float32`. |

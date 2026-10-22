@@ -490,6 +490,8 @@ Runtime configuration is managed through Pydantic `WorkerSettings` (`internal.co
 | `TABLE_PARQUET_COMPRESSION` | string | `snappy` | Codec for Parquet table exports (`snappy`, `zstd`, `gzip`). |
 | `S3_ENDPOINT_URL` | string / null | `None` | Custom S3 endpoint URL (e.g. MinIO / LocalStack). |
 | `AWS_REGION` | string | `us-east-1` | AWS region for S3 bucket operations. |
+| `AWS_ACCESS_KEY_ID` | string / null | `None` | Optional AWS access key ID for S3 operations. |
+| `AWS_SECRET_ACCESS_KEY` | string / null | `None` | Optional AWS secret access key for S3 operations. |
 | `WHISPER_MODEL_SIZE` | string | `large-v3` | Faster-Whisper variant (`tiny`, `base`, `small`, `medium`, `large-v3`). |
 | `WHISPER_DEVICE` | string | `cuda` | Inference device (`cuda` or `cpu`). |
 | `WHISPER_COMPUTE_TYPE` | string | `float16` | Precision / quantization (`float16`, `int8_float16`, `float32`). |
