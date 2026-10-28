@@ -19,32 +19,19 @@ envFrom: []
   #     name: doc-ai-config
 
 env:
-  - name: ENVIRONMENT
-    value: "production"
-  - name: TEMPORAL_HOST
-    value: "temporal-frontend.temporal.svc.cluster.local:7233"
-  - name: TEMPORAL_NAMESPACE
-    value: "default"
-  - name: AUDIO_TASK_QUEUE
-    value: "doc-ai-audio-queue"
-  - name: PROBE_PORT
-    value: "8080"
-  - name: PROBE_HOST
-    value: "0.0.0.0"
-  - name: LD_PRELOAD
-    value: "/usr/lib/libjemalloc.so"
-  - name: PYTORCH_CUDA_ALLOC_CONF
-    value: "max_split_size_mb:128"
-  - name: OMP_NUM_THREADS
-    value: "2"
-  - name: OPENBLAS_NUM_THREADS
-    value: "2"
-  - name: HF_HOME
-    value: "/models/cache/huggingface"
-  - name: TORCH_HOME
-    value: "/models/cache/torch"
-  - name: WHISPER_CACHE_DIR
-    value: "/models/cache/whisper"
+  ENVIRONMENT: "production"
+  TEMPORAL_HOST: "temporal-frontend.temporal.svc.cluster.local:7233"
+  TEMPORAL_NAMESPACE: "default"
+  AUDIO_TASK_QUEUE: "doc-ai-audio-queue"
+  PROBE_PORT: "8080"
+  PROBE_HOST: "0.0.0.0"
+  LD_PRELOAD: "/usr/lib/libjemalloc.so"
+  PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:128"
+  OMP_NUM_THREADS: "2"
+  OPENBLAS_NUM_THREADS: "2"
+  HF_HOME: "/models/cache/huggingface"
+  TORCH_HOME: "/models/cache/torch"
+  WHISPER_CACHE_DIR: "/models/cache/whisper"
 
 resources:
   requests:

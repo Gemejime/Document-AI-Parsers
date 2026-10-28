@@ -10,6 +10,27 @@
 
 ## Completed
 
+- **Automated Environment Synchronization & Deployment Enforcement Pattern**:
+  - **Dynamic ConfigMap Ingestion** (`deployments/helm/templates/configmap.yaml`):
+    - Replaced static variable bindings with dynamic range iteration over `.Values.env`.
+    - Preserved core service ports (`PORT`, `GRPC_PORT`) with safe defaults (`8080`, `50051`).
+    - Guarded against nil values and excluded `secretName` from ConfigMap keys.
+  - **Automatic Pod Restart on ConfigMap Change** (`deployments/helm/templates/deployment.yaml`):
+    - Added `checksum/config` annotation to `spec.template.metadata.annotations` using `sha256sum` over `configmap.yaml` template content to trigger rolling restarts on config changes.
+    - Updated container `envFrom` to reference the generated ConfigMap (`{{ include "rag-document-ai-worker.fullname" . }}-config`) and optional secret (`{{ .Values.env.secretName }}`).
+  - **Environment Synchronization & Drift Validation Script** (`scripts/sync_env_to_deployments.py`):
+    - Created CLI supporting `--sync` (syncing `.env.prod` to `deployments/helm/values.yaml`) and `--check-only` (exit code 1 on drift, 0 on clean).
+    - Automatically excluded sensitive keys (`PASSWORD`, `SECRET`, `TOKEN`, `KEY`).
+    - Preserved `secretName` and top-level Helm configurations (`replicaCount`, `image`, `resources`, `keda`, `persistence`, etc.).
+    - Handled UTF-8 console output cleanly across Windows shells.
+  - **Git Pre-Commit Hook Enforcement** (`.git/hooks/pre-commit`):
+    - Enforced `--check-only` validation before git commits to prevent uncommitted drift.
+  - **Developer Documentation in `.env.example`** (`.env.example`):
+    - Added architectural notice clarifying `.env` is for local development only and `.env.prod` is the single source of truth for `deployments/`.
+  - **Comprehensive Test Suite & Quality Verification** (`test/unit/test_sync_env_to_deployments.py`):
+    - Added 11 unit tests covering parsing, secret filtering, drift detection, deployment synchronization, and CLI exit codes.
+    - Verified clean linting and formatting via Ruff, type safety via Mypy, and zero drift with `--check-only`.
+
 - **Documentation & Environment Reference Hardening**:
   - **Comprehensive Production Architecture Specification** (`architecture.md`):
     - Created dedicated root `architecture.md` focused on `rag-document-ai-worker`, detailing the decoupled worker pool topology (`doc-ai-vision-worker` and `doc-ai-audio-worker`), microservice interaction boundaries (upstream `rag-ingestion-coordinator`, downstream `rag-chunk-lifecycle-service` over gRPC HTTP/2, and Triton `rag-inference-serving`), 5-layer internal architecture, GIL thread isolation with 10s heartbeat checkpoints, end-to-end Mermaid sequence flows, and KEDA queue depth autoscaling.
