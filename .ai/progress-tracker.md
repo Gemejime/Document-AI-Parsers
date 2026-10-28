@@ -10,6 +10,14 @@
 
 ## Completed
 
+- **CI/CD Secret Injection & Secret Management Architecture**:
+  - **CI/CD Secret Injection Workflow** (`.github/workflows/deploy.yml`):
+    - Automated creation/updating of `doc-ai-secrets` Kubernetes Secret in `doc-ai` namespace directly from GitHub Actions Secrets (`PROD_HF_TOKEN`, `PROD_AWS_ACCESS_KEY_ID`, `PROD_AWS_SECRET_ACCESS_KEY`).
+    - Integrated Helm deployment for `doc-ai-vision-worker` and `doc-ai-audio-worker` setting `env.secretName=doc-ai-secrets`.
+    - Added automated rollout verification (`kubectl rollout status`) for both worker profiles.
+  - **Secret Management Architecture Specification** (`deployments/SECRET_MANAGEMENT.md`):
+    - Authored comprehensive enterprise guide detailing ConfigMap vs Secret decoupling, GitHub Actions secrets inventory, injection flows, pod consumption, AWS IRSA / External Secrets Operator alternatives, and zero-downtime rotation.
+
 - **Automated Environment Synchronization & Deployment Enforcement Pattern**:
   - **Dynamic ConfigMap Ingestion** (`deployments/helm/templates/configmap.yaml`):
     - Replaced static variable bindings with dynamic range iteration over `.Values.env`.

@@ -1,0 +1,104 @@
+name: Deploy - RAG Document AI Worker
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - rag-document-ai-worker
+    paths:
+      - "deployments/**"
+      - "internal/**"
+      - "api/**"
+      - "cmd/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - ".env.prod"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-to-kubernetes:
+    name: Kubernetes Deploy & CI/CD Secret Injection
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.15.0"
+
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
+
+      - name: Configure Kubernetes Context
+        uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Ensure Kubernetes Namespace Exists
+        run: |
+          kubectl create namespace doc-ai --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: "Inject Microservice Secrets (CI/CD Secret Injection)"
+        run: |
+          echo "Injecting runtime secrets for rag-document-ai-worker into doc-ai namespace..."
+          kubectl create secret generic doc-ai-secrets \
+            --namespace doc-ai \
+            --from-literal=HF_TOKEN="${{ secrets.PROD_HF_TOKEN }}" \
+            --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.PROD_AWS_ACCESS_KEY_ID }}" \
+            --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Vision Worker Helm Release
+        run: |
+          echo "Deploying doc-ai-vision-worker via Helm..."
+          helm upgrade --install doc-ai-vision-worker deployments/helm \
+            --namespace doc-ai \
+            --values deployments/helm/values.yaml \
+            --values deployments/helm/values-vision.yaml \
+            --set env.secretName=doc-ai-secrets
+
+      - name: Deploy Audio Worker Helm Release
+        run: |
+          echo "Deploying doc-ai-audio-worker via Helm..."
+          helm upgrade --install doc-ai-audio-worker deployments/helm \
+            --namespace doc-ai \
+            --values deployments/helm/values.yaml \
+            --values deployments/helm/values-audio.yaml \
+            --set env.secretName=doc-ai-secrets
+
+      - name: Verify Vision Worker Rollout
+        run: |
+          echo "Verifying doc-ai-vision-worker rollout status..."
+          kubectl rollout status deployment/doc-ai-vision-worker \
+            --namespace doc-ai \
+            --timeout=300s
+
+      - name: Verify Audio Worker Rollout
+        run: |
+          echo "Verifying doc-ai-audio-worker rollout status..."
+          kubectl rollout status deployment/doc-ai-audio-worker \
+            --namespace doc-ai \
+            --timeout=300s
