@@ -500,4 +500,10 @@ Runtime configuration is managed through Pydantic `WorkerSettings` (`internal.co
 | `AUDIO_SAMPLE_RATE`           | integer       | `16000`                             | Native audio sample rate in Hz for Whisper and PyAnnote.                                                |
 | `AUDIO_PROGRESS_STEP_SECONDS` | float         | `30.0`                              | Progressive audio window interval chunk size in seconds.                                                |
 | `CHUNK_SERVICE_ENDPOINT`      | string        | `rag-chunk-lifecycle-service:50051` | Downstream gRPC chunk service endpoint (`mock` for local/offline testing).                              |
-| `VRAM_THRESHOLD_BYTES`        | integer       | `21474836480`                       | GPU VRAM threshold ceiling (20 GiB).                                                                    |
+### Secret Management & Runtime Credential Decoupling
+
+Runtime credentials (`HF_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) are decoupled from Git-tracked manifests:
+- Non-sensitive variables are synchronized to Helm `values.yaml` and loaded via Kubernetes ConfigMap (`doc-ai-worker-config`).
+- Sensitive credentials are dynamically injected into Kubernetes Secret `doc-ai-secrets` via GitHub Actions (`.github/workflows/deploy.yml`) using protected temporary files and step-scoped environment variables.
+- Workers mount both ConfigMap and Secret via `envFrom` in [`deployments/helm/templates/deployment.yaml`](../deployments/helm/templates/deployment.yaml).
+- Deployment rollout validation monitors chart-rendered Deployment names: `deployment/doc-ai-vision-worker-rag-document-ai-worker` and `deployment/doc-ai-audio-worker-rag-document-ai-worker`.

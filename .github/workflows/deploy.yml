@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - master
-      - rag-document-ai-worker
     paths:
       - "deployments/**"
       - "internal/**"
@@ -14,6 +13,13 @@ on:
       - "scripts/**"
       - "pyproject.toml"
       - ".env.prod"
+  workflow_run:
+    workflows: ["Publish Production Container Images"]
+    types:
+      - completed
+    branches:
+      - main
+      - master
   workflow_dispatch:
     inputs:
       environment:
@@ -23,10 +29,9 @@ on:
         type: choice
         options:
           - production
-          - staging
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-production
   cancel-in-progress: false
 
 permissions:
@@ -36,6 +41,7 @@ jobs:
   deploy-to-kubernetes:
     name: Kubernetes Deploy & CI/CD Secret Injection
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment: production
     steps:
       - name: Checkout repository
@@ -62,13 +68,32 @@ jobs:
           kubectl create namespace doc-ai --dry-run=client -o yaml | kubectl apply -f -
 
       - name: "Inject Microservice Secrets (CI/CD Secret Injection)"
+        env:
+          PROD_HF_TOKEN: ${{ secrets.PROD_HF_TOKEN }}
+          PROD_AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          PROD_AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
         run: |
+          echo "Validating required runtime secrets for doc-ai..."
+          if [ -z "$PROD_HF_TOKEN" ] || [ -z "$PROD_AWS_ACCESS_KEY_ID" ] || [ -z "$PROD_AWS_SECRET_ACCESS_KEY" ]; then
+            echo "::error::Missing required secret(s). PROD_HF_TOKEN, PROD_AWS_ACCESS_KEY_ID, and PROD_AWS_SECRET_ACCESS_KEY must all be configured."
+            exit 1
+          fi
+
           echo "Injecting runtime secrets for rag-document-ai-worker into doc-ai namespace..."
+          TMP_DIR=$(mktemp -d)
+          chmod 700 "$TMP_DIR"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+
+          printf "%s" "$PROD_HF_TOKEN" > "$TMP_DIR/HF_TOKEN"
+          printf "%s" "$PROD_AWS_ACCESS_KEY_ID" > "$TMP_DIR/AWS_ACCESS_KEY_ID"
+          printf "%s" "$PROD_AWS_SECRET_ACCESS_KEY" > "$TMP_DIR/AWS_SECRET_ACCESS_KEY"
+          chmod 600 "$TMP_DIR"/*
+
           kubectl create secret generic doc-ai-secrets \
             --namespace doc-ai \
-            --from-literal=HF_TOKEN="${{ secrets.PROD_HF_TOKEN }}" \
-            --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.PROD_AWS_ACCESS_KEY_ID }}" \
-            --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}" \
+            --from-file=HF_TOKEN="$TMP_DIR/HF_TOKEN" \
+            --from-file=AWS_ACCESS_KEY_ID="$TMP_DIR/AWS_ACCESS_KEY_ID" \
+            --from-file=AWS_SECRET_ACCESS_KEY="$TMP_DIR/AWS_SECRET_ACCESS_KEY" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Vision Worker Helm Release
@@ -92,13 +117,13 @@ jobs:
       - name: Verify Vision Worker Rollout
         run: |
           echo "Verifying doc-ai-vision-worker rollout status..."
-          kubectl rollout status deployment/doc-ai-vision-worker \
+          kubectl rollout status deployment/doc-ai-vision-worker-rag-document-ai-worker \
             --namespace doc-ai \
             --timeout=300s
 
       - name: Verify Audio Worker Rollout
         run: |
           echo "Verifying doc-ai-audio-worker rollout status..."
-          kubectl rollout status deployment/doc-ai-audio-worker \
+          kubectl rollout status deployment/doc-ai-audio-worker-rag-document-ai-worker \
             --namespace doc-ai \
             --timeout=300s

@@ -10,13 +10,20 @@
 
 ## Completed
 
-- **CI/CD Secret Injection & Secret Management Architecture**:
-  - **CI/CD Secret Injection Workflow** (`.github/workflows/deploy.yml`):
-    - Automated creation/updating of `doc-ai-secrets` Kubernetes Secret in `doc-ai` namespace directly from GitHub Actions Secrets (`PROD_HF_TOKEN`, `PROD_AWS_ACCESS_KEY_ID`, `PROD_AWS_SECRET_ACCESS_KEY`).
-    - Integrated Helm deployment for `doc-ai-vision-worker` and `doc-ai-audio-worker` setting `env.secretName=doc-ai-secrets`.
-    - Added automated rollout verification (`kubectl rollout status`) for both worker profiles.
-  - **Secret Management Architecture Specification** (`deployments/SECRET_MANAGEMENT.md`):
-    - Authored comprehensive enterprise guide detailing ConfigMap vs Secret decoupling, GitHub Actions secrets inventory, injection flows, pod consumption, AWS IRSA / External Secrets Operator alternatives, and zero-downtime rotation.
+- **CI/CD Secret Injection & Deployment Workflow Hardening**:
+  - **CI/CD Secret Injection Workflow Hardening** (`.github/workflows/deploy.yml`):
+    - Secured secret injection by sourcing values through step-scoped environment variables and writing to protected temporary files (`chmod 700` dir / `chmod 600` files) with clean EXIT trap removal instead of command-line literal interpolation.
+    - Added pre-injection validation halting the workflow if `PROD_HF_TOKEN`, `PROD_AWS_ACCESS_KEY_ID`, or `PROD_AWS_SECRET_ACCESS_KEY` are unset.
+    - Aligned deployment names in rollout checks with Helm chart-rendered names: `doc-ai-vision-worker-rag-document-ai-worker` and `doc-ai-audio-worker-rag-document-ai-worker`.
+    - Stabilized concurrency group to `deploy-production` preventing race conditions across concurrent ref deployments.
+    - Added `workflow_run` trigger for `Publish Production Container Images` and restricted automatic production deployments to approved release branches (`main`, `master`).
+    - Removed unsupported staging option from deployment dispatch inputs.
+  - **Secret Management Documentation Hardening** (`deployments/SECRET_MANAGEMENT.md`):
+    - Replaced machine-specific file URIs with repository-relative links across the specification.
+    - Updated `KUBECONFIG` specification to raw YAML format matching `azure/k8s-set-context@v4` requirements.
+    - Documented current `S3StorageClient` limitation where operations lack SDK bindings, clarifying that `ServiceAccount` annotations alone do not yet enable IRSA.
+    - Corrected drift enforcement statement indicating verification is manually executed via `--check-only` since `.env.prod` is git-ignored and omitted from fresh checkouts.
+    - Aligned zero-downtime rotation restart commands with chart-rendered deployment names.
 
 - **Automated Environment Synchronization & Deployment Enforcement Pattern**:
   - **Dynamic ConfigMap Ingestion** (`deployments/helm/templates/configmap.yaml`):

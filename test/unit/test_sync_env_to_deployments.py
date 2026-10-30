@@ -226,9 +226,7 @@ def test_cli_check_only_missing_file_failure(
         assert exc_info.value.code == 1
 
 
-def test_cli_check_only_empty_file_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_cli_check_only_empty_file_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify CLI --check-only exits 1 when env file contains no variables."""
     empty_file = tmp_path / ".env.empty"
     empty_file.write_text("# Only comments\n\n", encoding="utf-8")
@@ -257,4 +255,3 @@ def test_cli_default_mode_missing_file_skips(
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 0
-

@@ -24,15 +24,15 @@ flowchart TD
 ```
 
 1. **Non-Sensitive Configurations (Kubernetes ConfigMap)**:
-   - Sourced directly from [`.env.prod`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.env.prod).
-   - Synchronized to [`deployments/helm/values.yaml`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/deployments/helm/values.yaml) via `python scripts/sync_env_to_deployments.py --sync`.
-   - Enforced by pre-commit hooks and GitHub Actions CI drift verification (`--check-only`).
-   - Pods restart automatically via `checksum/config` sha256 annotation in [`deployments/helm/templates/deployment.yaml`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/deployments/helm/templates/deployment.yaml).
+   - Sourced directly from [`.env.prod`](../.env.prod).
+   - Synchronized to [`deployments/helm/values.yaml`](helm/values.yaml) via `python scripts/sync_env_to_deployments.py --sync`.
+   - Drift verification is performed manually via `python scripts/sync_env_to_deployments.py --check-only`; no pre-commit hook or GitHub Actions job enforces it, as `.env.prod` is git-ignored and absent from a fresh checkout.
+   - Pods restart automatically via `checksum/config` sha256 annotation in [`deployments/helm/templates/deployment.yaml`](helm/templates/deployment.yaml).
 
 2. **Sensitive Credentials (Kubernetes Secret)**:
    - Never stored in `.env.prod`, `values.yaml`, or Git history.
-   - Automatically excluded by [`scripts/sync_env_to_deployments.py`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/scripts/sync_env_to_deployments.py) matching keywords: `PASSWORD`, `SECRET`, `TOKEN`, `KEY`.
-   - Injected dynamically at deployment time via GitHub Actions ([`.github/workflows/deploy.yml`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/.github/workflows/deploy.yml)) into the Kubernetes cluster.
+   - Automatically excluded by [`scripts/sync_env_to_deployments.py`](../scripts/sync_env_to_deployments.py) matching keywords: `PASSWORD`, `SECRET`, `TOKEN`, `KEY`.
+   - Injected dynamically at deployment time via GitHub Actions ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)) into the Kubernetes cluster.
    - Injected into the container via `envFrom.secretRef` pointing to `doc-ai-secrets`.
 
 ---
@@ -43,7 +43,7 @@ Configure the following secrets in **GitHub Repository Settings &rarr; Secrets a
 
 | Secret Name | Purpose | Target Microservice Env Variable |
 | :--- | :--- | :--- |
-| `KUBECONFIG` | Base64 or raw kubeconfig granting deployment access to target cluster | *Deployment context only* |
+| `KUBECONFIG` | Raw kubeconfig YAML granting deployment access to target cluster | *Deployment context only* |
 | `PROD_HF_TOKEN` | Hugging Face token for downloading gated PyAnnote Diarization models (`pyannote/speaker-diarization-3.1`) | `HF_TOKEN` |
 | `PROD_AWS_ACCESS_KEY_ID` | Storage access key for AWS S3, MinIO, or Cloudflare R2 | `AWS_ACCESS_KEY_ID` |
 | `PROD_AWS_SECRET_ACCESS_KEY` | Storage secret key for AWS S3, MinIO, or Cloudflare R2 | `AWS_SECRET_ACCESS_KEY` |
@@ -52,13 +52,13 @@ Configure the following secrets in **GitHub Repository Settings &rarr; Secrets a
 
 ## 3. Automated Injection Flow (`.github/workflows/deploy.yml`)
 
-When code merges into `main`, `master`, or `rag-document-ai-worker`:
+When code merges into release branches (`main`, `master`) or container images are published:
 
 ```mermaid
 flowchart LR
-    A["GitHub Push / Dispatch"] --> B["GitHub Actions Runner"]
-    B --> C["Fetch GitHub Actions Secrets"]
-    C --> D["kubectl create secret generic doc-ai-secrets"]
+    A["GitHub Push / Workflow Run"] --> B["GitHub Actions Runner"]
+    B --> C["Fetch & Validate GitHub Actions Secrets"]
+    C --> D["Write to Protected Temp Files & Apply doc-ai-secrets"]
     D --> E["helm upgrade --install ... --set env.secretName=doc-ai-secrets"]
     E --> F["Pods Mount ConfigMap + Secret via envFrom"]
     F --> G["kubectl rollout status validation"]
@@ -66,11 +66,20 @@ flowchart LR
 
 ### Injection Command:
 ```bash
+TMP_DIR=$(mktemp -d)
+chmod 700 "$TMP_DIR"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+printf "%s" "$PROD_HF_TOKEN" > "$TMP_DIR/HF_TOKEN"
+printf "%s" "$PROD_AWS_ACCESS_KEY_ID" > "$TMP_DIR/AWS_ACCESS_KEY_ID"
+printf "%s" "$PROD_AWS_SECRET_ACCESS_KEY" > "$TMP_DIR/AWS_SECRET_ACCESS_KEY"
+chmod 600 "$TMP_DIR"/*
+
 kubectl create secret generic doc-ai-secrets \
   --namespace doc-ai \
-  --from-literal=HF_TOKEN="${{ secrets.PROD_HF_TOKEN }}" \
-  --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.PROD_AWS_ACCESS_KEY_ID }}" \
-  --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}" \
+  --from-file=HF_TOKEN="$TMP_DIR/HF_TOKEN" \
+  --from-file=AWS_ACCESS_KEY_ID="$TMP_DIR/AWS_ACCESS_KEY_ID" \
+  --from-file=AWS_SECRET_ACCESS_KEY="$TMP_DIR/AWS_SECRET_ACCESS_KEY" \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -78,7 +87,7 @@ kubectl create secret generic doc-ai-secrets \
 
 ## 4. Pod-Level Consumption
 
-In [`deployments/helm/templates/deployment.yaml`](file:///c:/Users/ANIK/Desktop/Gemejime/Document%20AI%20Parsers/deployments/helm/templates/deployment.yaml):
+In [`deployments/helm/templates/deployment.yaml`](helm/templates/deployment.yaml):
 ```yaml
 containers:
   - name: {{ .Chart.Name }}
@@ -106,7 +115,7 @@ serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/doc-ai-s3-rw-role
 ```
-The AWS SDK in `S3StorageClient` will automatically retrieve temporary credentials via STS Web Identity token files mounted by Kubernetes.
+When fully implemented with an AWS SDK client, the SDK in `S3StorageClient` will automatically retrieve temporary credentials via STS Web Identity token files mounted by Kubernetes. Note: S3 support in `S3StorageClient` is currently incomplete (`fetch_slice` and `write_parquet_table` operations do not invoke an AWS SDK client), so the service-account annotation alone does not yet enable IRSA until SDK-backed operations are implemented.
 
 ### B. External Secrets Operator (ESO) & HashiCorp Vault
 In multi-tenant or enterprise environments utilizing HashiCorp Vault, AWS Secrets Manager, or GCP Secret Manager, deploy an `ExternalSecret` resource to synchronize `doc-ai-secrets` automatically without CI/CD pipeline access to raw secret values:
@@ -150,7 +159,7 @@ spec:
 3. **Trigger Rolling Restart**:
    - Trigger a rolling update across worker deployments:
      ```bash
-     kubectl rollout restart deployment/doc-ai-vision-worker -n doc-ai
-     kubectl rollout restart deployment/doc-ai-audio-worker -n doc-ai
+     kubectl rollout restart deployment/doc-ai-vision-worker-rag-document-ai-worker -n doc-ai
+     kubectl rollout restart deployment/doc-ai-audio-worker-rag-document-ai-worker -n doc-ai
      ```
    - Kubernetes gracefully terminates old pods after new pods pass `/ready` HTTP probe checks on port 8080.
