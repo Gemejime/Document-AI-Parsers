@@ -10,6 +10,42 @@
 
 ## Completed
 
+- **CI/CD Secret Injection & Deployment Workflow Hardening**:
+  - **CI/CD Secret Injection Workflow Hardening** (`.github/workflows/deploy.yml`):
+    - Secured secret injection by sourcing values through step-scoped environment variables and writing to protected temporary files (`chmod 700` dir / `chmod 600` files) with clean EXIT trap removal instead of command-line literal interpolation.
+    - Added pre-injection validation halting the workflow if `PROD_HF_TOKEN`, `PROD_AWS_ACCESS_KEY_ID`, or `PROD_AWS_SECRET_ACCESS_KEY` are unset.
+    - Aligned deployment names in rollout checks with Helm chart-rendered names: `doc-ai-vision-worker-rag-document-ai-worker` and `doc-ai-audio-worker-rag-document-ai-worker`.
+    - Stabilized concurrency group to `deploy-production` preventing race conditions across concurrent ref deployments.
+    - Added `workflow_run` trigger for `Publish Production Container Images` and restricted automatic production deployments to approved release branches (`main`, `master`).
+    - Removed unsupported staging option from deployment dispatch inputs.
+  - **Secret Management Documentation Hardening** (`deployments/SECRET_MANAGEMENT.md`):
+    - Replaced machine-specific file URIs with repository-relative links across the specification.
+    - Updated `KUBECONFIG` specification to raw YAML format matching `azure/k8s-set-context@v4` requirements.
+    - Documented current `S3StorageClient` limitation where operations lack SDK bindings, clarifying that `ServiceAccount` annotations alone do not yet enable IRSA.
+    - Corrected drift enforcement statement indicating verification is manually executed via `--check-only` since `.env.prod` is git-ignored and omitted from fresh checkouts.
+    - Aligned zero-downtime rotation restart commands with chart-rendered deployment names.
+
+- **Automated Environment Synchronization & Deployment Enforcement Pattern**:
+  - **Dynamic ConfigMap Ingestion** (`deployments/helm/templates/configmap.yaml`):
+    - Replaced static variable bindings with dynamic range iteration over `.Values.env`.
+    - Preserved core service ports (`PORT`, `GRPC_PORT`) with safe defaults (`8080`, `50051`).
+    - Guarded against nil values and excluded `secretName` from ConfigMap keys.
+  - **Automatic Pod Restart on ConfigMap Change** (`deployments/helm/templates/deployment.yaml`):
+    - Added `checksum/config` annotation to `spec.template.metadata.annotations` using `sha256sum` over `configmap.yaml` template content to trigger rolling restarts on config changes.
+    - Updated container `envFrom` to reference the generated ConfigMap (`{{ include "rag-document-ai-worker.fullname" . }}-config`) and optional secret (`{{ .Values.env.secretName }}`).
+  - **Environment Synchronization & Drift Validation Script** (`scripts/sync_env_to_deployments.py`):
+    - Created CLI supporting `--sync` (syncing `.env.prod` to `deployments/helm/values.yaml`) and `--check-only` (exit code 1 on drift, 0 on clean).
+    - Automatically excluded sensitive keys (`PASSWORD`, `SECRET`, `TOKEN`, `KEY`).
+    - Preserved `secretName` and top-level Helm configurations (`replicaCount`, `image`, `resources`, `keda`, `persistence`, etc.).
+    - Handled UTF-8 console output cleanly across Windows shells.
+  - **Git Pre-Commit Hook Enforcement** (`.git/hooks/pre-commit`):
+    - Enforced `--check-only` validation before git commits to prevent uncommitted drift.
+  - **Developer Documentation in `.env.example`** (`.env.example`):
+    - Added architectural notice clarifying `.env` is for local development only and `.env.prod` is the single source of truth for `deployments/`.
+  - **Comprehensive Test Suite & Quality Verification** (`test/unit/test_sync_env_to_deployments.py`):
+    - Added 11 unit tests covering parsing, secret filtering, drift detection, deployment synchronization, and CLI exit codes.
+    - Verified clean linting and formatting via Ruff, type safety via Mypy, and zero drift with `--check-only`.
+
 - **Documentation & Environment Reference Hardening**:
   - **Comprehensive Production Architecture Specification** (`architecture.md`):
     - Created dedicated root `architecture.md` focused on `rag-document-ai-worker`, detailing the decoupled worker pool topology (`doc-ai-vision-worker` and `doc-ai-audio-worker`), microservice interaction boundaries (upstream `rag-ingestion-coordinator`, downstream `rag-chunk-lifecycle-service` over gRPC HTTP/2, and Triton `rag-inference-serving`), 5-layer internal architecture, GIL thread isolation with 10s heartbeat checkpoints, end-to-end Mermaid sequence flows, and KEDA queue depth autoscaling.

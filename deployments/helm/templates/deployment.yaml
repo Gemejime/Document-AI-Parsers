@@ -15,6 +15,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
@@ -44,11 +45,17 @@ spec:
             - name: http-probe
               containerPort: 8080
               protocol: TCP
-          {{- with .Values.envFrom }}
           envFrom:
+            - configMapRef:
+                name: {{ include "rag-document-ai-worker.fullname" . }}-config
+            {{- if and .Values.env .Values.env.secretName }}
+            - secretRef:
+                name: {{ .Values.env.secretName }}
+            {{- end }}
+            {{- with .Values.envFrom }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.env }}
+            {{- end }}
+          {{- with .Values.extraEnv }}
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
