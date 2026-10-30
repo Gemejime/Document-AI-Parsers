@@ -135,11 +135,19 @@ def main() -> None:
 
     env_file = args.env_file
     if not env_file.exists():
+        if args.check_only:
+            print(f"[ERROR] Environment file '{env_file}' does not exist. Cannot verify drift.")
+            sys.exit(1)
         print(f"[WARN] Environment file '{env_file}' does not exist. Skipping.")
         sys.exit(0)
 
     env_vars = parse_env_file(env_file)
     if not env_vars:
+        if args.check_only:
+            print(
+                f"[ERROR] No valid environment variables found in '{env_file}'. Cannot verify drift."
+            )
+            sys.exit(1)
         print(f"[WARN] No valid environment variables found in '{env_file}'.")
         sys.exit(0)
 

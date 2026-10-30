@@ -5,7 +5,7 @@ workerComponent: "audio-worker"
 taskQueue: "doc-ai-audio-queue"
 
 image:
-  repository: rag-document-ai-audio-worker
+  repository: doc-ai-audio-worker
   tag: "0.1.0"
   pullPolicy: IfNotPresent
 

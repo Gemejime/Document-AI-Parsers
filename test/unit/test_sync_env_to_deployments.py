@@ -208,3 +208,53 @@ def test_cli_sync_success(temp_repo: dict[str, Any], monkeypatch: pytest.MonkeyP
 
     assert data["env"]["ENVIRONMENT"] == "production"
     assert data["env"]["secretName"] == "custom-secret"
+
+
+def test_cli_check_only_missing_file_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify CLI --check-only exits 1 when env file does not exist."""
+    missing_file = tmp_path / ".env.nonexistent"
+    monkeypatch.setattr(
+        "scripts.sync_env_to_deployments.DEFAULT_ENV_FILE",
+        missing_file,
+    )
+
+    with mock.patch("sys.argv", ["sync_env", "--check-only"]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 1
+
+
+def test_cli_check_only_empty_file_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify CLI --check-only exits 1 when env file contains no variables."""
+    empty_file = tmp_path / ".env.empty"
+    empty_file.write_text("# Only comments\n\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "scripts.sync_env_to_deployments.DEFAULT_ENV_FILE",
+        empty_file,
+    )
+
+    with mock.patch("sys.argv", ["sync_env", "--check-only"]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 1
+
+
+def test_cli_default_mode_missing_file_skips(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify CLI without --check-only exits 0 with skip warning when file is missing."""
+    missing_file = tmp_path / ".env.nonexistent"
+    monkeypatch.setattr(
+        "scripts.sync_env_to_deployments.DEFAULT_ENV_FILE",
+        missing_file,
+    )
+
+    with mock.patch("sys.argv", ["sync_env"]):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 0
+
