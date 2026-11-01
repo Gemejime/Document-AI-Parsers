@@ -240,4 +240,8 @@
   - `.github/workflows/deploy.yml`: Updated `workflow_run.branches` filter to include `"v*.*.*"` version tags matching publisher releases; strengthened job condition to enforce repository trust and exclude manual publisher runs from deploying with stale Helm tags.
   - `deployments/helm/values-audio.yaml` & `deployments/helm/values-vision.yaml`: Updated image repository references to full GHCR paths (`ghcr.io/gemejime/doc-ai-audio-worker` and `ghcr.io/gemejime/doc-ai-vision-worker`), and aligned `TEMPORAL_NAMESPACE` override to `"doc-ai-prod"` matching base `values.yaml`.
   - `deployments/SECRET_MANAGEMENT.md`: Clarified release-specific ConfigMap naming and noted that worker values files can override `TEMPORAL_NAMESPACE` outside of synchronization/drift checks, documenting the intended `doc-ai-prod` namespace.
+- **Docker Buildx & CI Runner Disk Optimization**:
+  - `deployments/docker/Dockerfile.audio` & `deployments/docker/Dockerfile.vision`: Added `--no-cache-dir` flag to `pip install` commands in builder stages, eliminating ~3.5–4 GB of redundant wheel cache in `/root/.cache/pip`.
+  - `.github/workflows/ci.yml`: Added runner disk cleanup step prior to Docker buildx in `docker-smoke-build`, freeing up ~25–30 GB on `ubuntu-latest`; removed `cache-to: type=gha,mode=max` to prevent runner disk exhaustion and cache quota failures during smoke testing.
+  - `.github/workflows/docker-publish.yml`: Added runner disk cleanup step and switched cache export to `mode=min` to prevent GHA cache exhaustion during production multi-image matrix builds.
 
