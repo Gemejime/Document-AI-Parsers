@@ -1,65 +1,59 @@
-# Base shared default configuration for rag-document-ai-worker Helm 3 chart
 replicaCount: 1
-
-workerComponent: "worker"
-taskQueue: "doc-ai-queue"
-
+workerComponent: worker
+taskQueue: doc-ai-queue
 image:
   repository: rag-document-ai-worker
-  tag: "0.1.0"
+  tag: 0.1.0
   pullPolicy: IfNotPresent
-
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
+nameOverride: ''
+fullnameOverride: ''
 serviceAccount:
   create: true
   annotations: {}
-  name: ""
+  name: ''
   automountServiceAccountToken: true
-
-environment: "production"
-
-# Load environment variables directly from Kubernetes Secrets or ConfigMaps (e.g. created via --from-env-file=.env)
+environment: production
 envFrom: []
-  # - secretRef:
-  #     name: doc-ai-env
-  # - configMapRef:
-  #     name: doc-ai-config
-
 env:
-  - name: ENVIRONMENT
-    value: "production"
-  - name: TEMPORAL_HOST
-    value: "temporal-frontend.temporal.svc.cluster.local:7233"
-  - name: TEMPORAL_NAMESPACE
-    value: "default"
-  - name: CHUNK_SERVICE_ENDPOINT
-    value: "rag-chunk-lifecycle-service.default.svc.cluster.local:50051"
-  - name: AWS_REGION
-    value: "us-east-1"
-  - name: PROBE_PORT
-    value: "8080"
-  - name: PROBE_HOST
-    value: "0.0.0.0"
-  - name: PPOCR_HOME
-    value: "/tmp/.paddleocr"
-  - name: LD_PRELOAD
-    value: "/usr/lib/libjemalloc.so"
-  - name: PYTORCH_CUDA_ALLOC_CONF
-    value: "max_split_size_mb:128"
-  - name: OMP_NUM_THREADS
-    value: "2"
-  - name: OPENBLAS_NUM_THREADS
-    value: "2"
-
+  ENVIRONMENT: production
+  PYTHONUNBUFFERED: '1'
+  PYTHONDONTWRITEBYTECODE: '1'
+  TEMPORAL_HOST: temporal.default.svc.cluster.local:7233
+  TEMPORAL_NAMESPACE: doc-ai-prod
+  VISION_TASK_QUEUE: doc-ai-vision-queue
+  AUDIO_TASK_QUEUE: doc-ai-audio-queue
+  HEARTBEAT_INTERVAL_SECONDS: '10.0'
+  HEARTBEAT_TIMEOUT_SECONDS: '30.0'
+  PROBE_HOST: 0.0.0.0
+  PROBE_PORT: '8080'
+  CHUNK_SERVICE_ENDPOINT: rag-chunk-lifecycle-service.default.svc.cluster.local:50051
+  AWS_ENDPOINT_URL_S3: ''
+  AWS_REGION: us-east-1
+  MODEL_CACHE_DIR: /models/cache
+  HF_HOME: /models/cache/huggingface
+  TORCH_HOME: /models/cache/torch
+  DOCLING_CACHE_DIR: /models/cache/docling
+  WHISPER_CACHE_DIR: /models/cache/whisper
+  PPOCR_HOME: /tmp/.paddleocr
+  WHISPER_MODEL_SIZE: large-v3
+  WHISPER_DEVICE: cuda
+  WHISPER_COMPUTE_TYPE: float16
+  WHISPER_BEAM_SIZE: '5'
+  PYANNOTE_MODEL_ID: pyannote/speaker-diarization-3.1
+  AUDIO_SAMPLE_RATE: '16000'
+  AUDIO_PROGRESS_STEP_SECONDS: '30.0'
+  OCR_CONFIDENCE_THRESHOLD: '0.80'
+  TABLE_PARQUET_COMPRESSION: snappy
+  LD_PRELOAD: /usr/lib/libjemalloc.so
+  PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:128
+  OMP_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '2'
+  VRAM_THRESHOLD_BYTES: '21474836480'
 podAnnotations: {}
 podLabels: {}
-
 podSecurityContext:
   fsGroup: 1000
-
 securityContext:
   runAsUser: 1000
   runAsGroup: 1000
@@ -68,56 +62,50 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-      - ALL
-
+    - ALL
 service:
   type: ClusterIP
   port: 8080
   targetPort: 8080
   annotations: {}
-
 resources:
   requests:
-    cpu: "4000m"
-    memory: "8Gi"
-    nvidia.com/gpu: "1"
+    cpu: 4000m
+    memory: 8Gi
+    nvidia.com/gpu: '1'
   limits:
-    cpu: "8000m"
-    memory: "16Gi"
-    nvidia.com/gpu: "1"
-
+    cpu: 8000m
+    memory: 16Gi
+    nvidia.com/gpu: '1'
 volumes:
-  - name: dshm
-    emptyDir:
-      medium: Memory
-      sizeLimit: 2Gi
-  - name: tmp
-    emptyDir:
-      sizeLimit: 4Gi
-  - name: model-cache
-    persistentVolumeClaim:
-      claimName: doc-ai-model-weights-nvme-pvc
-      readOnly: true
-
-volumeMounts:
-  - name: dshm
-    mountPath: /dev/shm
-  - name: tmp
-    mountPath: /tmp
-  - name: model-cache
-    mountPath: /models/cache
+- name: dshm
+  emptyDir:
+    medium: Memory
+    sizeLimit: 2Gi
+- name: tmp
+  emptyDir:
+    sizeLimit: 4Gi
+- name: model-cache
+  persistentVolumeClaim:
+    claimName: doc-ai-model-weights-nvme-pvc
     readOnly: true
-
+volumeMounts:
+- name: dshm
+  mountPath: /dev/shm
+- name: tmp
+  mountPath: /tmp
+- name: model-cache
+  mountPath: /models/cache
+  readOnly: true
 persistence:
   enabled: true
   existingClaim: true
   name: doc-ai-model-weights-nvme-pvc
   accessModes:
-    - ReadOnlyMany
-  storageClass: "gp3-nvme"
+  - ReadOnlyMany
+  storageClass: gp3-nvme
   size: 100Gi
   annotations: {}
-
 livenessProbe:
   httpGet:
     path: /healthz
@@ -126,7 +114,6 @@ livenessProbe:
   periodSeconds: 10
   timeoutSeconds: 3
   failureThreshold: 3
-
 readinessProbe:
   httpGet:
     path: /ready
@@ -135,8 +122,6 @@ readinessProbe:
   periodSeconds: 5
   timeoutSeconds: 3
   failureThreshold: 2
-
-# Autoscaling via KEDA on Temporal task queue depth
 autoscaling:
   enabled: true
   minReplicaCount: 1
@@ -144,19 +129,14 @@ autoscaling:
   cooldownPeriod: 300
   pollingInterval: 15
   triggers: []
-
-# Prometheus Operator ServiceMonitor
 serviceMonitor:
   enabled: true
-  interval: "15s"
-  scrapeTimeout: "10s"
+  interval: 15s
+  scrapeTimeout: 10s
   additionalLabels: {}
-
-# Prometheus Operator Alerting Rules
 prometheusRule:
   enabled: true
   additionalLabels: {}
-
 nodeSelector: {}
 tolerations: []
 affinity: {}

@@ -22,8 +22,8 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY cmd ./cmd
 COPY internal ./internal
-RUN pip install --upgrade pip wheel setuptools && \
-    pip install .[audio]
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
+    pip install --no-cache-dir .[audio]
 
 # Final runtime image
 FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS runtime

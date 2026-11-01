@@ -10,6 +10,42 @@
 
 ## Completed
 
+- **CI/CD Secret Injection & Deployment Workflow Hardening**:
+  - **CI/CD Secret Injection Workflow Hardening** (`.github/workflows/deploy.yml`):
+    - Secured secret injection by sourcing values through step-scoped environment variables and writing to protected temporary files (`chmod 700` dir / `chmod 600` files) with clean EXIT trap removal instead of command-line literal interpolation.
+    - Added pre-injection validation halting the workflow if `PROD_HF_TOKEN`, `PROD_AWS_ACCESS_KEY_ID`, or `PROD_AWS_SECRET_ACCESS_KEY` are unset.
+    - Aligned deployment names in rollout checks with Helm chart-rendered names: `doc-ai-vision-worker-rag-document-ai-worker` and `doc-ai-audio-worker-rag-document-ai-worker`.
+    - Stabilized concurrency group to `deploy-production` preventing race conditions across concurrent ref deployments.
+    - Added `workflow_run` trigger for `Publish Production Container Images` and restricted automatic production deployments to approved release branches (`main`, `master`).
+    - Removed unsupported staging option from deployment dispatch inputs.
+  - **Secret Management Documentation Hardening** (`deployments/SECRET_MANAGEMENT.md`):
+    - Replaced machine-specific file URIs with repository-relative links across the specification.
+    - Updated `KUBECONFIG` specification to raw YAML format matching `azure/k8s-set-context@v4` requirements.
+    - Documented current `S3StorageClient` limitation where operations lack SDK bindings, clarifying that `ServiceAccount` annotations alone do not yet enable IRSA.
+    - Corrected drift enforcement statement indicating verification is manually executed via `--check-only` since `.env.prod` is git-ignored and omitted from fresh checkouts.
+    - Aligned zero-downtime rotation restart commands with chart-rendered deployment names.
+
+- **Automated Environment Synchronization & Deployment Enforcement Pattern**:
+  - **Dynamic ConfigMap Ingestion** (`deployments/helm/templates/configmap.yaml`):
+    - Replaced static variable bindings with dynamic range iteration over `.Values.env`.
+    - Preserved core service ports (`PORT`, `GRPC_PORT`) with safe defaults (`8080`, `50051`).
+    - Guarded against nil values and excluded `secretName` from ConfigMap keys.
+  - **Automatic Pod Restart on ConfigMap Change** (`deployments/helm/templates/deployment.yaml`):
+    - Added `checksum/config` annotation to `spec.template.metadata.annotations` using `sha256sum` over `configmap.yaml` template content to trigger rolling restarts on config changes.
+    - Updated container `envFrom` to reference the generated ConfigMap (`{{ include "rag-document-ai-worker.fullname" . }}-config`) and optional secret (`{{ .Values.env.secretName }}`).
+  - **Environment Synchronization & Drift Validation Script** (`scripts/sync_env_to_deployments.py`):
+    - Created CLI supporting `--sync` (syncing `.env.prod` to `deployments/helm/values.yaml`) and `--check-only` (exit code 1 on drift, 0 on clean).
+    - Automatically excluded sensitive keys (`PASSWORD`, `SECRET`, `TOKEN`, `KEY`).
+    - Preserved `secretName` and top-level Helm configurations (`replicaCount`, `image`, `resources`, `keda`, `persistence`, etc.).
+    - Handled UTF-8 console output cleanly across Windows shells.
+  - **Git Pre-Commit Hook Enforcement** (`.git/hooks/pre-commit`):
+    - Enforced `--check-only` validation before git commits to prevent uncommitted drift.
+  - **Developer Documentation in `.env.example`** (`.env.example`):
+    - Added architectural notice clarifying `.env` is for local development only and `.env.prod` is the single source of truth for `deployments/`.
+  - **Comprehensive Test Suite & Quality Verification** (`test/unit/test_sync_env_to_deployments.py`):
+    - Added 11 unit tests covering parsing, secret filtering, drift detection, deployment synchronization, and CLI exit codes.
+    - Verified clean linting and formatting via Ruff, type safety via Mypy, and zero drift with `--check-only`.
+
 - **Documentation & Environment Reference Hardening**:
   - **Comprehensive Production Architecture Specification** (`architecture.md`):
     - Created dedicated root `architecture.md` focused on `rag-document-ai-worker`, detailing the decoupled worker pool topology (`doc-ai-vision-worker` and `doc-ai-audio-worker`), microservice interaction boundaries (upstream `rag-ingestion-coordinator`, downstream `rag-chunk-lifecycle-service` over gRPC HTTP/2, and Triton `rag-inference-serving`), 5-layer internal architecture, GIL thread isolation with 10s heartbeat checkpoints, end-to-end Mermaid sequence flows, and KEDA queue depth autoscaling.
@@ -199,4 +235,13 @@
   - `.env.example`: Unset space-filled values for `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` (setting to empty strings) and removed redundant `S3_ENDPOINT_URL`.
   - `test/unit/test_settings.py`: Added `monkeypatch` fixture to `test_worker_settings_defaults()` to ensure tests pass independent of the host runner's environment variables.
   - `test/unit/test_settings.py`: Wrapped `configure_logging(cfg)` in `patch.dict(os.environ)` to prevent environment variable mutations from leaking between test cases.
+- **CI/CD Deployment & Helm Configuration Hardening (Code Review Findings)**:
+  - `.ai/doc-api.md`: Updated Section 8 ConfigMap reference to describe release-specific naming (`<release-name>-rag-document-ai-worker-config`, specifically `doc-ai-vision-worker-rag-document-ai-worker-config` and `doc-ai-audio-worker-rag-document-ai-worker-config`) rather than a fixed name.
+  - `.github/workflows/deploy.yml`: Updated `workflow_run.branches` filter to include `"v*.*.*"` version tags matching publisher releases; strengthened job condition to enforce repository trust and exclude manual publisher runs from deploying with stale Helm tags.
+  - `deployments/helm/values-audio.yaml` & `deployments/helm/values-vision.yaml`: Updated image repository references to full GHCR paths (`ghcr.io/gemejime/doc-ai-audio-worker` and `ghcr.io/gemejime/doc-ai-vision-worker`), and aligned `TEMPORAL_NAMESPACE` override to `"doc-ai-prod"` matching base `values.yaml`.
+  - `deployments/SECRET_MANAGEMENT.md`: Clarified release-specific ConfigMap naming and noted that worker values files can override `TEMPORAL_NAMESPACE` outside of synchronization/drift checks, documenting the intended `doc-ai-prod` namespace.
+- **Docker Buildx & CI Runner Disk Optimization**:
+  - `deployments/docker/Dockerfile.audio` & `deployments/docker/Dockerfile.vision`: Added `--no-cache-dir` flag to `pip install` commands in builder stages, eliminating ~3.5–4 GB of redundant wheel cache in `/root/.cache/pip`.
+  - `.github/workflows/ci.yml`: Added runner disk cleanup step prior to Docker buildx in `docker-smoke-build`, freeing up ~25–30 GB on `ubuntu-latest`; removed `cache-to: type=gha,mode=max` to prevent runner disk exhaustion and cache quota failures during smoke testing.
+  - `.github/workflows/docker-publish.yml`: Added runner disk cleanup step and switched cache export to `mode=min` to prevent GHA cache exhaustion during production multi-image matrix builds.
 
