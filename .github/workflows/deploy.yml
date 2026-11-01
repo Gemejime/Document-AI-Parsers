@@ -20,6 +20,7 @@ on:
     branches:
       - main
       - master
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       environment:
@@ -41,7 +42,18 @@ jobs:
   deploy-to-kubernetes:
     name: Kubernetes Deploy & CI/CD Secret Injection
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: |
+      github.event_name != 'workflow_run' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event != 'workflow_dispatch' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        (
+          startsWith(github.event.workflow_run.head_branch, 'v') ||
+          github.event.workflow_run.head_branch == 'main' ||
+          github.event.workflow_run.head_branch == 'master'
+        )
+      )
     environment: production
     steps:
       - name: Checkout repository

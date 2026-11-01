@@ -5,7 +5,7 @@ workerComponent: "vision-worker"
 taskQueue: "doc-ai-vision-queue"
 
 image:
-  repository: doc-ai-vision-worker
+  repository: ghcr.io/gemejime/doc-ai-vision-worker
   tag: "0.1.0"
   pullPolicy: IfNotPresent
 
@@ -21,7 +21,7 @@ envFrom: []
 env:
   ENVIRONMENT: "production"
   TEMPORAL_HOST: "temporal-frontend.temporal.svc.cluster.local:7233"
-  TEMPORAL_NAMESPACE: "default"
+  TEMPORAL_NAMESPACE: "doc-ai-prod"
   VISION_TASK_QUEUE: "doc-ai-vision-queue"
   CHUNK_SERVICE_ENDPOINT: "rag-chunk-lifecycle-service.default.svc.cluster.local:50051"
   AWS_REGION: "us-east-1"

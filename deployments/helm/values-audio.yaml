@@ -5,7 +5,7 @@ workerComponent: "audio-worker"
 taskQueue: "doc-ai-audio-queue"
 
 image:
-  repository: doc-ai-audio-worker
+  repository: ghcr.io/gemejime/doc-ai-audio-worker
   tag: "0.1.0"
   pullPolicy: IfNotPresent
 
@@ -21,7 +21,7 @@ envFrom: []
 env:
   ENVIRONMENT: "production"
   TEMPORAL_HOST: "temporal-frontend.temporal.svc.cluster.local:7233"
-  TEMPORAL_NAMESPACE: "default"
+  TEMPORAL_NAMESPACE: "doc-ai-prod"
   AUDIO_TASK_QUEUE: "doc-ai-audio-queue"
   PROBE_PORT: "8080"
   PROBE_HOST: "0.0.0.0"
