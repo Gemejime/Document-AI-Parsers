@@ -12,7 +12,7 @@ To prevent credential leakage and satisfy enterprise security compliance (SOC 2,
 flowchart TD
     subgraph NonSensitive["Non-Sensitive Configuration (Git Tracked)"]
         A[".env.prod (Single Source of Truth)"] -->|sync_env_to_deployments.py| B["deployments/helm/values.yaml"]
-        B -->|Helm Template| C["Kubernetes ConfigMap: doc-ai-worker-config"]
+        B -->|Helm Template| C["Kubernetes ConfigMaps: <release>-rag-document-ai-worker-config"]
     end
 
     subgraph Sensitive["Sensitive Credentials (Zero Git Exposure)"]
@@ -26,6 +26,7 @@ flowchart TD
 1. **Non-Sensitive Configurations (Kubernetes ConfigMap)**:
    - Sourced directly from [`.env.prod`](../.env.prod).
    - Synchronized to [`deployments/helm/values.yaml`](helm/values.yaml) via `python scripts/sync_env_to_deployments.py --sync`.
+   - Worker values files ([`values-vision.yaml`](helm/values-vision.yaml) and [`values-audio.yaml`](helm/values-audio.yaml)) can override configuration such as `TEMPORAL_NAMESPACE` and are not covered by `sync_env_to_deployments.py` synchronization or drift checks. The intended production worker namespace across all components is `doc-ai-prod`; overrides in `values-audio.yaml` and `values-vision.yaml` are aligned to `doc-ai-prod` to match the base value.
    - Drift verification is performed manually via `python scripts/sync_env_to_deployments.py --check-only`; no pre-commit hook or GitHub Actions job enforces it, as `.env.prod` is git-ignored and absent from a fresh checkout.
    - Pods restart automatically via `checksum/config` sha256 annotation in [`deployments/helm/templates/deployment.yaml`](helm/templates/deployment.yaml).
 

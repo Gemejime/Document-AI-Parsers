@@ -235,4 +235,9 @@
   - `.env.example`: Unset space-filled values for `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` (setting to empty strings) and removed redundant `S3_ENDPOINT_URL`.
   - `test/unit/test_settings.py`: Added `monkeypatch` fixture to `test_worker_settings_defaults()` to ensure tests pass independent of the host runner's environment variables.
   - `test/unit/test_settings.py`: Wrapped `configure_logging(cfg)` in `patch.dict(os.environ)` to prevent environment variable mutations from leaking between test cases.
+- **CI/CD Deployment & Helm Configuration Hardening (Code Review Findings)**:
+  - `.ai/doc-api.md`: Updated Section 8 ConfigMap reference to describe release-specific naming (`<release-name>-rag-document-ai-worker-config`, specifically `doc-ai-vision-worker-rag-document-ai-worker-config` and `doc-ai-audio-worker-rag-document-ai-worker-config`) rather than a fixed name.
+  - `.github/workflows/deploy.yml`: Updated `workflow_run.branches` filter to include `"v*.*.*"` version tags matching publisher releases; strengthened job condition to enforce repository trust and exclude manual publisher runs from deploying with stale Helm tags.
+  - `deployments/helm/values-audio.yaml` & `deployments/helm/values-vision.yaml`: Updated image repository references to full GHCR paths (`ghcr.io/gemejime/doc-ai-audio-worker` and `ghcr.io/gemejime/doc-ai-vision-worker`), and aligned `TEMPORAL_NAMESPACE` override to `"doc-ai-prod"` matching base `values.yaml`.
+  - `deployments/SECRET_MANAGEMENT.md`: Clarified release-specific ConfigMap naming and noted that worker values files can override `TEMPORAL_NAMESPACE` outside of synchronization/drift checks, documenting the intended `doc-ai-prod` namespace.
 
